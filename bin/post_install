@@ -9,7 +9,7 @@ password=$OPENSHIFT_TUNGSTEN_DB_PASSWORD
 tungsten_password=$OPENSHIFT_TUNGSTEN_SYS_PASSWORD
 
 echo "drop database test;
-create database \`${dbname}\` DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;" | /usr/bin/mysql -u root -S "$socket_file" > /dev/null
+create database \`${dbname}\` DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;" | /usr/bin/mysql -u root -P $port > /dev/null
 
 echo "
 delete from user;
