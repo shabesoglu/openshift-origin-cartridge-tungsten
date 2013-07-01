@@ -1,7 +1,7 @@
 Name: tungsten
 Cartridge-Short-Name: TUNGSTEN
 Display-Name: Tungsten 2.0
-Description: "Database cluster running on MariaDB"
+Description: "Database cluster running on MariaDB."
 Version: '2.0'
 License: "."
 License-Url: http://xxxxxx/licenses/
