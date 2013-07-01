@@ -7,6 +7,7 @@ echo 'Generating username and password'
 
 username=$(generate_username)
 password=$(generate_password)
+tungsten_password=$(generate_password)
 
 echo "$username" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_USERNAME
 echo "$password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_PASSWORD
@@ -17,6 +18,8 @@ echo "$username" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_USERNAME
 echo "$password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_PASSWORD
 echo "mysql://$username:$password@$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT/" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_URL
 
+
+echo "$tungsten_password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_SYS_PASSWORD
 
 echo 'Installing mysqld'
 
