@@ -21,5 +21,5 @@ echo "
 grant all on *.* to 'tungsten'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$tungstenpassword' with grant option;
 grant all on *.* to 'tungsten'@'localhost' identified by '$tungsten_password' with grant option;
 grant SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION CLIENT,
-SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER on *.* to 'app_user' identified by 'secret'
+SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER on *.* to 'app_user' identified by 'secret' ;
 flush privileges;" | /usr/bin/mysql -u $username -p$password  -S "$socket_file" mysql > /dev/null
