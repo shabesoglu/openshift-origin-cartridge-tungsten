@@ -1,49 +1,22 @@
 Name: tungsten
 Cartridge-Short-Name: TUNGSTEN
-Display-Name: Tungsten 2.0
-Description: "Database cluster running on MariaDB."
+Architecture: noarch
+Display-Name: Tungsten
+Description: "MariaDB is a multi-user, multi-threaded SQL database server."
 Version: '2.0'
-License: "."
-License-Url: http://xxxxxx/licenses/
-Vendor: Continuent
-Cartridge-Version: '0.0.1'
+Versions: [2.0]
+Cartridge-Version: 0.0.1
 Cartridge-Vendor: continuent
-Source-Url: https://github.com/narmitag/openshift-origin-cartridge-tungsen.git
+License: Commercial
+Vendor: continuent
 Categories:
   - service
-  - tungsten
-  - web_framework
-Website: http://www.continuent.com
+  - database
+  - embedded
+Website: https://www.continuent.com/
 Help-Topics:
-  "Developer Center": https://openshift.redhat.com/community/developers
+  - "Building with MariaDB" : http://docs.redhat.com/docs/en-US/OpenShift/2.0/html/User_Guide/sect-User_Guide-Working_With_Database_Cartridges.html
 Cart-Data:
-  - Key: OPENSHIFT_TMP_DIR
-    Type: environment
-    Description: "Directory to store application temporary files."
-  - Key: OPENSHIFT_REPO_DIR
-    Type: environment
-    Description: "Application root directory where application files reside. This directory is reset every time you do a git-push"
-  - Key: OPENSHIFT_INTERNAL_PORT
-    Type: environment
-    Description: "Internal port to which the web-framework binds to."
-  - Key: OPENSHIFT_INTERNAL_IP
-    Type: environment
-    Description: "Internal IP to which the web-framework binds to."
-  - Key: OPENSHIFT_APP_DNS
-    Type: environment
-    Description: "Fully qualified domain name for the application."
-  - Key: OPENSHIFT_APP_NAME
-    Type: environment
-    Description: "Application name"
-  - Key: OPENSHIFT_DATA_DIR
-    Type: environment
-    Description: "Directory to store application data files. Preserved across git-pushes. Not shared across gears."
-  - Key: OPENSHIFT_APP_UUID
-    Type: environment
-    Description: "Unique ID which identified the application. Does not change between gears."
-  - Key: OPENSHIFT_GEAR_UUID
-    Type: environment
-    Description: "Unique ID which identified the gear. This value changes between gears."
   - Key: "username"
     Type: cart_data
     Description: "Root user on mariadb database"
@@ -53,24 +26,26 @@ Cart-Data:
   - Key: database_name
     Type: cart_data
     Description: "MariaDB database name"
-   - Key: connection_url
+  - Key: connection_url
     Type: cart_data
     Description: "MariaDB connection URL"
+Suggests:
+  - phpmyadmin-3.5
 Provides:
-  - tungsten-2.0
-  - "tungsten"
-  - "tungsten(version) = 2.0"
+  - mariadb-5.5
+  - mariadb
+  - mariadb-singleton-master
+Conflicts:
+  - postgresql
 Publishes:
-    publish-db-connection-info:
-      Type: "ENV:NET_TCP:db:connection-info"
+  publish-db-connection-info:
+    Type: "ENV:NET_TCP:db:connection-info"
 Scaling:
   Min: 1
-  Max: -1
+  Max: 1
 Endpoints:
   - Private-IP-Name:   DB_HOST
     Private-Port-Name: DB_PORT
     Private-Port:      3306
     Public-Port-Name:  DB_PROXY_PORT
-Additional-Control-Actions:
-    - threaddump
-Install-Build-Required: true
+Install-Build-Required: false
