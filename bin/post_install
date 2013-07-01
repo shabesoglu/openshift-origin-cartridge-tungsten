@@ -3,6 +3,7 @@
 #
 dbname=$OPENSHIFT_APP_NAME
 socket_file=$OPENSHIFT_TUNGSTEN_DB_SOCKET
+port=$OPENSHIFT_TUNGSTEN_DB_PORT
 username=$OPENSHIFT_TUNGSTEN_DB_USERNAME
 password=$OPENSHIFT_TUNGSTEN_DB_PASSWORD
 tungsten_password=$OPENSHIFT_TUNGSTEN_SYS_PASSWORD
@@ -14,7 +15,7 @@ echo "
 delete from user;
 grant all on *.* to '$username'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$password' with grant option;
 grant all on *.* to '$username'@'localhost' identified by '$password' with grant option;
-flush privileges;" | /usr/bin/mysql -u root -S "$socket_file" mysql > /dev/null
+flush privileges;" | /usr/bin/mysql -u root -P $port  mysql > /dev/null
 
 #Create tungsten user
 echo "
@@ -22,4 +23,4 @@ grant all on *.* to 'tungsten'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$tun
 grant all on *.* to 'tungsten'@'localhost' identified by '$tungsten_password' with grant option;
 grant SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION CLIENT,
 SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER on *.* to 'app_user' identified by 'secret' ;
-flush privileges;" | /usr/bin/mysql -u $username -p$password  -S "$socket_file" mysql > /dev/null
+flush privileges;" | /usr/bin/mysql -u $username -p$password  -P $port mysql > /dev/null
