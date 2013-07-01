@@ -9,10 +9,15 @@ cd   $OPENSHIFT_TUNGSTEN_DIR/opt/mysqlj
 /bin/tar xzf mysql-connector-java-5.1.23.tar.gz
 
 mkdir -p $OPENSHIFT_TUNGSTEN_HOME_DIR/software
-cd $OPENSHIFT_TUNGSTEN_HOME_DIR/software
-/usr/bin/wget  http://23.21.169.95/continuent-tungsten-2.0.1-335.tar.gz
-/bin/tar xzf continuent-tungsten-2.0.1-335.tar.gz
-ln -s  continuent-tungsten-2.0.1-335 current
+#cd $OPENSHIFT_TUNGSTEN_HOME_DIR/software
+#/usr/bin/wget  http://23.21.169.95/continuent-tungsten-2.0.1-335.tar.gz
+#/bin/tar xzf continuent-tungsten-2.0.1-335.tar.gz
+#ln -s  continuent-tungsten-2.0.1-335 current
+
+cd $OPENSHIFT_TUNGSTEN_HOME_DIR/
+/usr/bin/wget  http://23.21.169.95/openshift-build.tar.gz
+/bin/tar xzf openshift-build.tar.gz
+
 
 
 
