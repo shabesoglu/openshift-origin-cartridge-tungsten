@@ -11,12 +11,12 @@ tungsten_password=$(generate_password)
 
 echo "$username" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_USERNAME
 echo "$password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_PASSWORD
-echo "mysql://$username:$password@$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT/" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_URL
+echo "mysql://$username:$password@$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_CONNECTOR_PORT/" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_DB_URL
 
 #backward comat to mysql
 echo "$username" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_USERNAME
 echo "$password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_PASSWORD
-echo "mysql://$username:$password@$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT/" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_URL
+echo "mysql://$username:$password@$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_CONNECTOR_PORT/" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_MYSQL_DB_URL
 
 
 echo "$tungsten_password" > $OPENSHIFT_TUNGSTEN_DIR/env/OPENSHIFT_TUNGSTEN_SYS_PASSWORD
@@ -34,14 +34,14 @@ client_result "   Root Password: $password"
 client_result "   Database Name: $OPENSHIFT_APP_NAME"
 client_result ""
 
-client_result 'Connection URL: mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT/'
+client_result 'Connection URL: mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_CONNECTOR_PORT/'
 client_result ""
 client_result "You can manage your new MySQL database by also embedding phpmyadmin-3.4."
 client_result "The phpmyadmin username and password will be the same as the MySQL credentials above."
 
-cart_props 'connection_url=mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT/'
+cart_props 'connection_url=mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_CONNECTOR_PORT/'
 cart_props "username=$username"
 cart_props "password=$password"
 cart_props "database_name=$OPENSHIFT_APP_NAME"
 
-set_app_info "Connection URL: mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_DB_PORT"
+set_app_info "Connection URL: mysql://$OPENSHIFT_TUNGSTEN_DB_HOST:$OPENSHIFT_TUNGSTEN_CONNECTOR_PORT"
