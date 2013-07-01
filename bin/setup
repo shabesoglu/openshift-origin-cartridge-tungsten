@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
 #
-mkdir -p $OPENSHIFT_MARIADB_DIR/{log,pid,socket,data,run}
+mkdir -p $OPENSHIFT_TUNGSTEN_DIR/{log,pid,socket,data,run}

@@ -5,7 +5,7 @@ source $OPENSHIFT_CARTRIDGE_SDK_BASH
 export STOPTIMEOUT=10
 
 function is_running {
-  pidfile=$OPENSHIFT_MARIADB_DIR/pid/mariadb.pid
+  pidfile=$OPENSHIFT_TUNGSTEN_DIR/pid/mariadb.pid
 
   if [ -f $pidfile ]; then
     mariadb_pid=`cat $pidfile 2> /dev/null`
@@ -25,7 +25,7 @@ function is_running {
 # Start mysqld and block until it comes up.
 function start {
   if ! is_running; then
-    /usr/bin/mysqld_safe --defaults-file=$OPENSHIFT_MARIADB_DIR/conf/my.cnf > /dev/null 2>&1 &    
+    /usr/bin/mysqld_safe --defaults-file=$OPENSHIFT_TUNGSTEN_DIR/conf/my.cnf > /dev/null 2>&1 &
     wait_for_mariadbd_availability
   else
     echo "MySQL already running" 1>&2
@@ -33,9 +33,9 @@ function start {
 }
 
 function wait_for_mariadbd_availability {
-  pidfile=$OPENSHIFT_MARIADB_DIR/pid/mariadb.pid
+  pidfile=$OPENSHIFT_TUNGSTEN_DIR/pid/mariadb.pid
 
-  if [ -n "$OPENSHIFT_MARIADB_DB_USERNAME" ]; then
+  if [ -n "$OPENSHIFT_TUNGSTEN_DB_USERNAME" ]; then
     i=0
     sleep 1
     while (( ! touch_mariadbd ) || [ ! -f $pidfile ]) && [ $i -lt 30 ]
@@ -47,12 +47,12 @@ function wait_for_mariadbd_availability {
 }
 
 function touch_mariadbd {
-  echo ";" | /usr/bin/mysql -h $OPENSHIFT_MARIADB_DB_HOST -P $OPENSHIFT_MARIADB_DB_PORT -u $OPENSHIFT_MARIADB_DB_USERNAME --password="$OPENSHIFT_MARIADB_DB_PASSWORD" > /dev/null 2>&1
+  echo ";" | /usr/bin/mysql -h $OPENSHIFT_TUNGSTEN_DB_HOST -P $OPENSHIFT_TUNGSTEN_DB_PORT -u $OPENSHIFT_TUNGSTEN_DB_USERNAME --password="$OPENSHIFT_TUNGSTEN_DB_PASSWORD" > /dev/null 2>&1
 }
 
 function stop {
   if is_running; then
-    pidfile=$OPENSHIFT_MARIADB_DIR/pid/mariadb.pid
+    pidfile=$OPENSHIFT_TUNGSTEN_DIR/pid/mariadb.pid
 
     if [ -f $pidfile ]; then
       pid=$( /bin/cat $pidfile )
@@ -91,18 +91,18 @@ function pre_snapshot {
   # TODO: add support for scalable apps, where DB is not located on primary gear
   start
 
-  echo "$OPENSHIFT_MARIADB_DB_USERNAME" > $OPENSHIFT_DATA_DIR/mariadb_db_username
-  echo "$OPENSHIFT_MARIADB_DB_HOST" > $OPENSHIFT_DATA_DIR/mariadb_db_host
+  echo "$OPENSHIFT_TUNGSTEN_DB_USERNAME" > $OPENSHIFT_DATA_DIR/mariadb_db_username
+  echo "$OPENSHIFT_TUNGSTEN_DB_HOST" > $OPENSHIFT_DATA_DIR/mariadb_db_host
   
   #backward comat to mysql
-  echo "$OPENSHIFT_MARIADB_DB_USERNAME" > $OPENSHIFT_DATA_DIR/mysql_db_username
-  echo "$OPENSHIFT_MARIADB_DB_HOST" > $OPENSHIFT_DATA_DIR/mysql_db_host  
+  echo "$OPENSHIFT_TUNGSTEN_DB_USERNAME" > $OPENSHIFT_DATA_DIR/mysql_db_username
+  echo "$OPENSHIFT_TUNGSTEN_DB_HOST" > $OPENSHIFT_DATA_DIR/mysql_db_host
 
   dump_file=$OPENSHIFT_DATA_DIR/mariadb_dump_snapshot.gz
-  local db_host=$OPENSHIFT_MARIADB_DB_HOST
-  local db_port=$OPENSHIFT_MARIADB_DB_PORT
+  local db_host=$OPENSHIFT_TUNGSTEN_DB_HOST
+  local db_port=$OPENSHIFT_TUNGSTEN_DB_PORT
 
-  /usr/bin/mysqldump -h $db_host -P $db_port -u $OPENSHIFT_MARIADB_DB_USERNAME --password="$OPENSHIFT_MARIADB_DB_PASSWORD" --all-databases --add-drop-table | /bin/gzip > $dump_file
+  /usr/bin/mysqldump -h $db_host -P $db_port -u $OPENSHIFT_TUNGSTEN_DB_USERNAME --password="$OPENSHIFT_TUNGSTEN_DB_PASSWORD" --all-databases --add-drop-table | /bin/gzip > $dump_file
 
   if [ ! ${PIPESTATUS[0]} -eq 0 ]; then
     echo 1>&2
@@ -133,9 +133,9 @@ function post_restore {
   if [ -f $OPENSHIFT_DATA_DIR/mariadb_dump_snapshot.gz ]; then
     start
 
-    dbhost=$OPENSHIFT_MARIADB_DB_HOST
+    dbhost=$OPENSHIFT_TUNGSTEN_DB_HOST
     OLD_IP=$(/bin/cat $OPENSHIFT_DATA_DIR/mariadb_db_host)
-    NEW_IP=$OPENSHIFT_MARIADB_DB_HOST
+    NEW_IP=$OPENSHIFT_TUNGSTEN_DB_HOST
 
     if [ -s $OPENSHIFT_DATA_DIR/mariadb_db_username ]; then
         OLD_USER=$(/bin/cat $OPENSHIFT_DATA_DIR/mariadb_db_username)
@@ -147,10 +147,10 @@ function post_restore {
     (
       /bin/zcat $OPENSHIFT_DATA_DIR/mariadb_dump_snapshot.gz
       echo ";"
-      echo "GRANT ALL ON *.* TO '$OPENSHIFT_MARIADB_DB_USERNAME'@'$NEW_IP' IDENTIFIED BY '$OPENSHIFT_MARIADB_DB_PASSWORD' WITH GRANT OPTION;"
-      echo "GRANT ALL ON *.* TO '$OPENSHIFT_MARIADB_DB_USERNAME'@'localhost' IDENTIFIED BY '$OPENSHIFT_MARIADB_DB_PASSWORD' WITH GRANT OPTION;"
+      echo "GRANT ALL ON *.* TO '$OPENSHIFT_TUNGSTEN_DB_USERNAME'@'$NEW_IP' IDENTIFIED BY '$OPENSHIFT_TUNGSTEN_DB_PASSWORD' WITH GRANT OPTION;"
+      echo "GRANT ALL ON *.* TO '$OPENSHIFT_TUNGSTEN_DB_USERNAME'@'localhost' IDENTIFIED BY '$OPENSHIFT_TUNGSTEN_DB_PASSWORD' WITH GRANT OPTION;"
       
-      if [ "$OPENSHIFT_MARIADB_DB_USERNAME" != "$OLD_USER" ]; then
+      if [ "$OPENSHIFT_TUNGSTEN_DB_USERNAME" != "$OLD_USER" ]; then
           echo "DROP USER '$OLD_USER'@'localhost';"
       fi
 
@@ -159,7 +159,7 @@ function post_restore {
       fi
       
       echo "FLUSH PRIVILEGES;"
-    ) | /usr/bin/mysql -h $dbhost -P $OPENSHIFT_MARIADB_DB_PORT -u $OPENSHIFT_MARIADB_DB_USERNAME --password="$OPENSHIFT_MARIADB_DB_PASSWORD"
+    ) | /usr/bin/mysql -h $dbhost -P $OPENSHIFT_TUNGSTEN_DB_PORT -u $OPENSHIFT_TUNGSTEN_DB_USERNAME --password="$OPENSHIFT_TUNGSTEN_DB_PASSWORD"
 
     if [ ! ${PIPESTATUS[1]} -eq 0 ]; then
         echo 1>&2
