@@ -1,11 +1,3 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
-version='0.5'
-echo "$version" > "$OPENSHIFT_CEYLON_DIR/env/OPENSHIFT_CEYLON_VERSION"
-
-mkdir $OPENSHIFT_CEYLON_DIR/{log,data,run,fred}
-
-OPENSHIFT_CEYLON_MODULES_REPO_DIR=${OPENSHIFT_CEYLON_DIR}data/ceylon_repo
-mkdir $OPENSHIFT_CEYLON_MODULES_REPO_DIR
-
-exit 0
+mkdir -p $OPENSHIFT_MARIADB_DIR/{log,pid,socket,data,run}
