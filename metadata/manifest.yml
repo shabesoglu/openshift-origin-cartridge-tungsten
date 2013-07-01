@@ -1,19 +1,19 @@
-Name: ceylon
-Cartridge-Short-Name: CEYLON
-Display-Name: Ceylon 0.5
-Description: "Ceylon is a language for writing large programs in teams. Ceylon has a powerful static type system that prevents many bugs while letting you express more, more easily: union types, intersection types, higher order functions, mixin inheritance, and enumerated types."
-Version: '0.5'
-License: "Please visit ceylon website for license details."
-License-Url: http://ceylon-lang.org/code/licenses/
-Vendor: Red Hat
+Name: tungsten
+Cartridge-Short-Name: TUNGSTEN
+Display-Name: Tungsten 2.0
+Description: "Database cluster running on MariaDB"
+Version: '2.0'
+License: "."
+License-Url: http://xxxxxx/licenses/
+Vendor: Continuent
 Cartridge-Version: '0.0.1'
-Cartridge-Vendor: ceylonlangorg
-Source-Url: https://github.com/narmitag/openshift.git
+Cartridge-Vendor: continuent
+Source-Url: https://github.com/narmitag/openshift-origin-cartridge-tungsen.git
 Categories:
   - service
-  - ceylon
+  - tungsten
   - web_framework
-Website: http://ceylon-lang.org
+Website: http://www.continuent.com
 Help-Topics:
   "Developer Center": https://openshift.redhat.com/community/developers
 Cart-Data:
@@ -44,47 +44,33 @@ Cart-Data:
   - Key: OPENSHIFT_GEAR_UUID
     Type: environment
     Description: "Unique ID which identified the gear. This value changes between gears."
+  - Key: "username"
+    Type: cart_data
+    Description: "Root user on mariadb database"
+  - Key: "password"
+    Type: cart_data
+    Description: "Password for root user on mariadb database"
+  - Key: database_name
+    Type: cart_data
+    Description: "MariaDB database name"
+   - Key: connection_url
+    Type: cart_data
+    Description: "MariaDB connection URL"
 Provides:
-  - ceylon-0.5
-  - "ceylon"
-  - "ceylon(version) = 0.5"
+  - tungsten-2.0
+  - "tungsten"
+  - "tungsten(version) = 2.0"
 Publishes:
-  publish-http-url:
-    Type: "NET_TCP:httpd-proxy-info"
-  publish-gear-endpoint:
-    Type: "NET_TCP:gear-endpoint-info"
-Subscribes:
-  set-db-connection-info:
-    Type: "NET_TCP:db:connection-info"
-    Required: false
-  set-nosql-db-connection-info:
-    Type: "NET_TCP:nosqldb:connection-info"
-    Required: false
-  set-mysql-connection-info:
-    Type: "NET_TCP:db:mysql"
-    Required : false
-  set-postgres-connection-info:
-    Type: "NET_TCP:db:postgres"
-    Required : false
-  set-doc-url:
-    Type: "STRING:urlpath"
-    Required : false
+    publish-db-connection-info:
+      Type: "ENV:NET_TCP:db:connection-info"
 Scaling:
   Min: 1
   Max: -1
-Group-Overrides:
-  - components:
-    - ceylon-0.5
-    - web_proxy
 Endpoints:
-  - Private-IP-Name:   IP
-    Private-Port-Name: HTTP_PORT
-    Private-Port:      8080
-    Public-Port-Name:  HTTP_PROXY_PORT
-    Mappings:
-      - Frontend:      ""
-        Backend:       ""
-        Options:       { "websocket": 1}
+  - Private-IP-Name:   DB_HOST
+    Private-Port-Name: DB_PORT
+    Private-Port:      3306
+    Public-Port-Name:  DB_PROXY_PORT
 Additional-Control-Actions:
     - threaddump
 Install-Build-Required: true
