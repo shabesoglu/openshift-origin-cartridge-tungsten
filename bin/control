@@ -20,7 +20,7 @@ function is_running {
   return 1
 }
 
-# TODO: account for standalone scenario
+# TODO: account for standalone scenario  .
 # TODO: source user hooks?
 # Start mysqld and block until it comes up.
 function start {

@@ -1,5 +1,6 @@
 #!/bin/bash -e
 
+#
 dbname=$OPENSHIFT_APP_NAME
 socket_file=$OPENSHIFT_MARIADB_DB_SOCKET
 username=$OPENSHIFT_MARIADB_DB_USERNAME
