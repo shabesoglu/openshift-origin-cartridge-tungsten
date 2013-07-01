@@ -46,7 +46,7 @@ Scaling:
 Endpoints:
   - Private-IP-Name:   DB_HOST
     Private-Port-Name: DB_PORT
-    Private-Port:      13306
+    Private-Port:      15306
     Public-Port-Name:  DB_PROXY_PORT
   - Private-IP-Name:   DB_HOST
     Private-Port-Name: CONNECTOR_PORT

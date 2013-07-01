@@ -9,19 +9,19 @@ password=$OPENSHIFT_TUNGSTEN_DB_PASSWORD
 tungsten_password=$OPENSHIFT_TUNGSTEN_SYS_PASSWORD
 host=$OPENSHIFT_TUNGSTEN_DB_HOST
 
-#echo "drop database test;
-#create database \`${dbname}\` DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;" | /usr/bin/mysql -u root -P $port -h $host > /dev/null
+echo "drop database test;
+create database \`${dbname}\` DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;" | /usr/bin/mysql -u root -P $port -S $socket_file > /dev/null
 
-#echo "
-#delete from user;
-#grant all on *.* to '$username'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$password' with grant option;
-#grant all on *.* to '$username'@'localhost' identified by '$password' with grant option;
-#flush privileges;" | /usr/bin/mysql -u root -P $port  -h $host mysql > /dev/null
+echo "
+delete from user;
+grant all on *.* to '$username'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$password' with grant option;
+grant all on *.* to '$username'@'localhost' identified by '$password' with grant option;
+flush privileges;" | /usr/bin/mysql -u root -P $port  -S $socket_file  mysql > /dev/null
 
 #Create tungsten user
-#echo "
-#grant all on *.* to 'tungsten'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$tungstenpassword' with grant option;
-#grant all on *.* to 'tungsten'@'localhost' identified by '$tungsten_password' with grant option;
-#grant SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION CLIENT,
-#SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER on *.* to 'app_user' identified by 'secret' ;
-#flush privileges;" | /usr/bin/mysql -u $username -p$password  -P $port -h $host mysql > /dev/null
+echo "
+grant all on *.* to 'tungsten'@'$OPENSHIFT_TUNGSTEN_DB_HOST' identified by '$tungstenpassword' with grant option;
+grant all on *.* to 'tungsten'@'localhost' identified by '$tungsten_password' with grant option;
+grant SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION CLIENT,
+SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER on *.* to 'app_user' identified by 'secret' ;
+flush privileges;" | /usr/bin/mysql -u $username -p$password  -P $port -h $host mysql > /dev/null
