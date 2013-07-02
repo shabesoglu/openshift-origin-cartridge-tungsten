@@ -1,4 +1,4 @@
-#OpenShift Tungsten cartridge
+#OpenShift Tungsten cartridge.
 
 Login to [OpenShift](https://openshift.redhat.com/app/console/application_types) and find "Code Anything" at the bottom of "Create Application" tab.
 
