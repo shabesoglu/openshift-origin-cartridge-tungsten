@@ -35,4 +35,4 @@ do
 	echo "wrapper.port.address=$OPENSHIFT_TUNGSTEN_DB_HOST" >> ~/tungsten/opt/continuent/tungsten/$app/conf/wrapper.conf
 done
 
-
+cp ~/tungsten/wrapper-linux-x86-64 ~/tungsten/opt/continuent/tungsten/cluster-home/bin
