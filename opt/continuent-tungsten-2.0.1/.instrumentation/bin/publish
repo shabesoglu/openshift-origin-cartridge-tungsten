@@ -1,0 +1,218 @@
+#!/bin/sh
+#
+#-------------------------------------------------------------------------------
+# Name:     publish
+# Purpose:  Script to publish given metrics to www display
+# Author:   Ronald Bradford  ronald.bradford@continuent.com
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Script Definition
+#
+SCRIPT_NAME=`basename $0 | sed -e "s/\.sh$//"`
+SCRIPT_VERSION="0.11 01-NOV-2012"
+SCRIPT_REVISION=""
+
+#-------------------------------------------------------------------------------
+# Constants - These values never change
+#
+
+#-------------------------------------------------------------------------------
+# Script specific variables
+#
+
+
+ 
+#----------------------------------------------------------- publish_process --
+#
+publish_process() {
+  local FUNCTION="publish_process()"
+  debug "${FUNCTION} \$#=$# \$*=$*"
+  [ $# -ne 4 ] && fatal "${FUNCTION} This function requires four arguments."
+  local CONFIG="$1"
+  [ -z "${CONFIG}" ] && fatal "${FUNCTION} \$CONFIG is not defined"
+  local SERVICE="$2"
+  [ -z "${SERVICE}" ] && fatal "${FUNCTION} \$SERVICE is not defined"
+  local DIR="$3"
+  [ -z "${DIR}" ] && fatal "${FUNCTION} \$DIR is not defined"
+  local DATA_POINTS="$4"
+  [ -z "${DATA_POINTS}" ] && fatal "${FUNCTION} \$DATA_POINTS is not defined"
+
+  
+  WWW_DIR="${BASE_WWW_DIR}/${SERVICE}/${DIR}"
+  mkdir -p ${WWW_DIR}
+  RC=$?
+  [ ${RC} -ne 0 ] && error "Unable to create the publishing directory '${WWW_DIR}'"
+
+  TMP_BASE="${TMP_DIR}/${SCRIPT_NAME}.dir.$$"
+  debug "Temporary build data '${TMP_BASE}'"
+  rm -rf ${TMP_BASE}
+
+  while [ ! -f "${STOP_FILE}" ]
+  do
+    mkdir -p ${TMP_BASE}
+    cp ${WWW_DIR}/* ${TMP_BASE}
+    > ${TMP_BASE}/load.js
+    process_file ${CONFIG} ${SERVICE} ${DIR} ${DATA_POINTS}
+    info "Publishing data to ${WWW_DIR}"
+    mv ${TMP_BASE}/* ${WWW_DIR}
+    [ ! -f "${WWW_DIR}/index.htm" ] && cp ${BASE_WWW_DIR}/assets/index.htm ${WWW_DIR}
+    [ ! -f "${WWW_DIR}/generate.js" ] && cp ${BASE_WWW_DIR}/assets/generate.js ${WWW_DIR}
+    [ -z "${USE_DEBUG}" ] && rm -rf ${TMP_BASE}
+    sleep 3
+  done
+
+  return 0
+
+}
+
+
+process_file() {
+  local FUNCTION="publish_process()"
+  debug "${FUNCTION} \$#=$# \$*=$*"
+  [ $# -ne 4 ] && fatal "${FUNCTION} This function requires four arguments."
+  local CONFIG="$1"
+  [ -z "${CONFIG}" ] && fatal "${FUNCTION} \$CONFIG is not defined"
+  local SERVICE="$2"
+  [ -z "${SERVICE}" ] && fatal "${FUNCTION} \$SERVICE is not defined"
+  local DIR="$3"
+  [ -z "${DIR}" ] && fatal "${FUNCTION} \$DIR is not defined"
+  local DATA_POINTS="$4"
+  [ -z "${DATA_POINTS}" ] && fatal "${FUNCTION} \$DATA_POINTS is not defined"
+
+  local OIFS=${IFS}
+
+  IFS=${TAB}
+  while read PLOT FORMAT TEMPLATE LABELS COLORS FILES
+  do
+    # Ignore lines that start with #
+    [ -z ${PLOT} -o `echo ${PLOT} | cut -c1` = "#" ] && continue
+    debug "plot=${PLOT} format=${FORMAT} template=${TEMPLATE} labels=${LABELS} colors=${COLORS} files=${FILES}"
+
+    info "Generating plot ${PLOT}..."
+
+    local BASE_SERVICE="${LOG_DIR}${SERVICE}"
+    TODAY=`date +%Y%m%d`
+    METRICS=`echo "${FILES}" | sed -e "s|%%SERVICE%%|${BASE_SERVICE}|g;s|%%TODAY%%|${TODAY}|g;s|%%HOST%%|${SHORT_HOSTNAME}|g"`
+    debug "METRICS=${METRICS}"
+    ${SCRIPT_DIR}/format -o ${TMP_BASE}/plot${PLOT}_data.js -g ${PLOT} -f ${FORMAT} -p ${DATA_POINTS} -c ${COLORS} -l ${LABELS} ${METRICS}
+
+    if [ ! -f "${TMP_BASE}/plot${PLOT}.js" ]
+    then
+      TMPL=${CNF_DIR}/${SCRIPT_NAME}.${TEMPLATE}.tmpl
+      [ ! -f "${TMPL}" ] && warn "Unable to load the template '${TMPL}'" && continue
+      sed -e "s/%%PLOT%%/${PLOT}/g" $TMPL > ${TMP_BASE}/plot${PLOT}.js
+    fi
+    
+    cat ${TMP_BASE}/plot${PLOT}_data.js ${TMP_BASE}/plot${PLOT}.js  >> ${TMP_BASE}/load.js
+  [ ! -z "${USE_DEBUG}" ] && ls -l ${TMP_BASE}
+  done < ${CONFIG}
+  IFS=${OIFS}
+
+
+  return 0
+}
+
+#------------------------------------------------------------ pre_processing --
+# Pre Processing Checks
+#
+pre_processing() {
+  [ -z "${CONTINUENT_ROOT}" ] && error "\$CONTINUENT_ROOT must be defined."
+  # This is done intentionally to enable linking of this to a different filesystem
+  LOG_DIR="${CONTINUENT_ROOT}/instrumentation/"
+  [ ! -d "${LOG_DIR}" ] && error "\$CONTINUENT_ROOT/instrumentation does not exist."
+
+  BASE_WWW_DIR="${LOG_DIR}www"
+  [ ! -d "${BASE_WWW_DIR}" ] && warn "Publish directory '${BASE_WWW_DIR}' does not exist, creating." && mkdir -p ${BASE_WWW_DIR}
+
+  [ ! -d "${BASE_WWW_DIR}/assets" ] && warn "Assets are not in place, defining." && cp -r ${BASE_DIR}/www/assets ${BASE_WWW_DIR}
+
+  return 0
+}
+
+#-----------------------------------------------------------------  bootstrap --
+# Essential script bootstrap
+#
+bootstrap() {
+  local DIRNAME=`dirname $0`
+  local COMMON_SCRIPT_FILE="${DIRNAME}/common"
+  [ ! -f "${COMMON_SCRIPT_FILE}" ] && echo "ERROR: You must have a matching '${COMMON_SCRIPT_FILE}' with this script ${0}" && exit 1
+  . ${COMMON_SCRIPT_FILE}
+  set_base_paths
+
+  return 0
+}
+
+#----------------------------------------------------------------------- help --
+# Display Script help syntax
+#
+help() {
+  echo ""
+  echo "Usage: ${SCRIPT_NAME}.sh -c <publish file> -d <service> -s <directory> [ -p <points> | -q | -v | --help | --version ]"
+  echo ""
+  echo "  Required:"
+  echo "    -c         Publish configuration file"
+  echo "    -d         Data Service"
+  echo "    -s         Sub directory to publish"
+  echo ""
+  echo "  Optional:"
+  echo "    -p         Data Points to Publish"
+  echo "    -q         Quiet Mode"
+  echo "    -v         Verbose logging"
+  echo "    --help     Script help"
+  echo "    --version  Script version (${SCRIPT_VERSION}) ${SCRIPT_REVISION}"
+  echo ""
+  echo "  Dependencies:"
+  echo "    common"
+  echo "    format"
+
+  return 0
+}
+
+
+#-------------------------------------------------------------- process_args --
+# Process Command Line Arguments
+#
+process_args() {
+  check_for_long_args $*
+  debug "Processing supplied arguments '$*'"
+  while getopts s:c:d:p:qv OPTION
+  do
+    case "$OPTION" in
+      c)  PARAM_CONFIG_FILE=${OPTARG};;
+      p)  PARAM_DATA_POINTS=${OPTARG};;
+      d)  PARAM_SERVICE=${OPTARG};;
+      s)  PARAM_DIRECTORY=${OPTARG};;
+      q)  QUIET="Y";; 
+      v)  USE_DEBUG="Y";; 
+    esac
+  done
+  shift `expr ${OPTIND} - 1`
+
+  [ -z "${PARAM_SERVICE}" ] && error "You must specify a data service with -d. See --help for more information."
+  [ -z "${PARAM_CONFIG_FILE}" ] && PARAM_CONFIG_FILE=${DEFAULT_CNF_FILE} && warn "Using default publish config file '${PARAM_CONFIG_FILE}'"
+  [ -z "${PARAM_DIRECTORY}" ] && PARAM_DIRECTORY="." && warn "Using default publish directory '${PARAM_DIRECTORY}'"
+
+  [ -z "${PARAM_DATA_POINTS}" ] && PARAM_DATA_POINTS=100
+
+  return 0
+}
+
+#----------------------------------------------------------------------- main --
+# Main Script Processing
+#
+main() {
+  [ ! -z "${TEST_FRAMEWORK}" ] && return 1
+  bootstrap
+  process_args $*
+  pre_processing
+  commence
+  publish_process ${PARAM_CONFIG_FILE} ${PARAM_SERVICE} ${PARAM_DIRECTORY} ${PARAM_DATA_POINTS}
+  complete
+
+  return 0
+}
+
+main $*
+
+# END

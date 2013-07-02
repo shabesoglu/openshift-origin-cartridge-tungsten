@@ -1,0 +1,5 @@
+#!/bin/bash
+
+THOME=`dirname $0`
+
+echo "ls -l" | ${THOME}/../../tungsten-manager/bin/cctrl | grep -E "REPLICATOR" | tr -d "|" | awk -F":|role=|," '{print $3"="$1}'

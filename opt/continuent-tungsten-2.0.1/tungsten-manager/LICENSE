@@ -1,0 +1,180 @@
+        CONTINUENT TUNGSTEN -- LICENSE TERMS
+
+IMPORTANT - PLEASE READ THE TERMS OF THIS SOFTWARE LICENSE AGREEMENT
+("AGREEMENT") CAREFULLY. BY CLICKING ON THE "ACCEPT" BUTTON, (1)
+YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTAND, AND AGREE TO BE
+BOUND BY THIS AGREEMENT, AND (2) YOU REPRESENT THAT YOU HAVE THE
+AUTHORITY TO ENTER INTO THIS AGREEMENT, PERSONALLY OR ON BEHALF OF
+THE ENTITY WHICH HAS PURCHASED A LICENSE TO USE THE SOFTWARE (THE
+"CUSTOMER"), AND TO BIND THE CUSTOMER TO THE TERMS OF THIS AGREEMENT.
+IF YOU DO NOT AGREE TO ALL TERMS AND CONDITIONS OF THIS AGREEMENT,
+OR IF YOU DO NOT HAVE SUCH AUTHORITY, YOU SHOULD CLICK ON THE
+"DECLINE" BUTTON TO DISCONTINUE THE INSTALLATION OF THE SOFTWARE.
+Customer wishes to obtain a license from Continuent, Inc. and its
+affiliates ("Continuent") to use the Continuent Licensed Software,
+as defined below, according to the terms set forth below.
+
+1. Definitions. Continuent makes the Continuent uni/cluster software,
+a set of clustering middleware solutions for web and database
+applications (the "Licensed Software"). The Licensed Software is
+comprised of several software configurations that run on different
+operating systems these software configurations are referred to
+collectively as the Cluster Software) on one or more central
+processing units ("CPUs") (each a "Cluster Member") and software
+that allows the Customer to manage the Cluster Member (the "Cluster
+Management Console").
+
+2. License. Subject to the terms of this Agreement, Continuent
+grants to Customer a nontransferable, nonexclusive, worldwide license
+to use, execute and display the Licensed Software on the operating
+system(s) and the number of CPUs for which Customer has purchased
+a license, in executable object code format only, solely for Customers
+own internal business operations. For purposes of this license, a
+server with four (4) CPUs will require four (4) licenses. The
+foregoing license includes a license to use any other materials
+provided or disclosed to Customer by Continuent or its third party
+suppliers (the "Continuent Materials") solely in connection with
+such Licensed Software. The Licensed Software, and all worldwide
+intellectual property rights therein, are the exclusive property
+of Continuent and its suppliers. All rights in and to the Licensed
+Software not expressly granted to Customer in this Agreement are
+reserved by Continuent and its suppliers.
+
+3. Restrictions. The rights granted to Customer in this Agreement
+are subject to the following restrictions: (i) the maximum number
+of CPUs that Customer uses to access the Licensed Software shall
+not exceed the number of CPU licenses that Customer has purchased;
+(ii) CPU licenses cannot be transferred from one CPU to another if
+there is a possibility of the Licensed Software being used on two
+different CPUs at the same time; (iii) Customer shall not license,
+sell, rent, lease, transfer, assign, distribute, display, host,
+outsource, disclose or otherwise commercially exploit or make the
+Licensed Software or the Continuent Materials available to any third
+party; (iv) Customer shall not modify, make derivative works of,
+disassemble, reverse compile or reverse engineer any part of the
+Licensed Software or access the Licensed Software or Continuent
+Materials in order to build a similar or competitive product or
+service; (v) except as expressly stated herein, no part of the
+Licensed Software or Continuent Materials may be copied, reproduced,
+distributed, republished, downloaded, displayed, posted or transmitted
+in any form or by any means, including but not limited to electronic,
+mechanical, photocopying, recording or other means; and (vi) Customer
+shall not disclose the results of any benchmark test or evaluation
+of the Licensed Software to any third party without Continuent's
+prior written approval.
+
+4. Unlicensed Software. Continuent may include software configurations
+that run on operating systems that are not licensed by Customer
+under this Agreement ("Unlicensed Software") in the electronic
+distribution that contains the Licensed Software Customer has
+licensed hereunder. Customer acknowledges and agrees that Customer
+has no right or license whatsoever to any Unlicensed Software and
+that such software is included in the distribution solely as a
+matter of administrative convenience for Continuent. Customer agrees
+to access only those software configurations that run on the operating
+system(s) for which Customer has purchased a license and agrees not
+to attempt to gain access to, or permit any third party to gain
+access to, the Unlicensed Software. In addition, in the event that
+the Cluster Software licensed by Customer is intended to run on the
+MySQL operating system, Customer agrees that it shall obtain a
+commercial license to the MySQL software prior to use of such Cluster
+Software.
+
+5. Payment. Customer agrees to pay in accordance with the applicable
+payment method chosen by Customer for the Licensed Software offered
+under this Agreement. All fees under this Agreement are nonrefundable.
+Continuent’s fees are exclusive of all taxes, levies, or duties
+imposed by taxing authorities, and Customer shall be responsible
+for payment of all such taxes, levies or duties. Customer will
+provide Continuent with valid and updated credit card or approved
+purchase order information and complete and accurate billing and
+contact information. If Customer provides credit card information
+to Continuent, Customer authorizes Continuent to bill such credit
+card at the time that Customer orders any products or services.
+
+6. DISCLAIMER OF WARRANTIES. THE LICENSED SOFTWARE PROVIDED HEREUNDER
+IS PROVIDED AS IS. CONTINUENT DISCLAIMS ALL EXPRESS, IMPLIED OR
+STATUTORY WARRANTIES RELATING TO THE LICENSED SOFTWARE, INCLUDING
+BUT NOT LIMITED TO, MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+AND NON-INFRINGEMENT. CONTINUENT DOES NOT WARRANT THAT USE OF THE
+LICENSED SOFTWARE WILL BE UNINTERRUPTED, AVAILABLE AT ANY TIME OR
+FROM ANY LOCATION, OR ERROR-FREE, THAT DEFECTS WILL BE CORRECTED,
+OR THAT THE LICENSED SOFTWARE IS FREE OF VIRUSESOR OTHER HARMFUL
+COMPONENTS.
+
+7. LIMITATION OF REMEDIES AND DAMAGES. CONTINUENT SHALL NOT BE
+RESPONSIBLE OR LIABLE WITH RESPECT TO ANY SUBJECT MATTER OF THIS
+AGREEMENT OR TERMS OR CONDITIONS RELATED THERETO UNDER ANY CONTRACT,
+NEGLIGENCE, STRICT LIABILITY OR OTHER THEORY (A) FOR LOSS OR
+INACCURACY OF DATA OR COST OF PROCUREMENT OF SUBSTITUTE GOODS,
+SERVICES OR TECHNOLOGY, OR (B) FOR ANY INDIRECT, INCIDENTAL OR
+CONSEQUENTIAL DAMAGES INCLUDING, BUT NOT LIMITED TO LOSS OF REVENUES
+AND LOSS OF PROFITS. CONTINUENTS AGGREGATE CUMULATIVE LIABILITY
+SHALL NOT EXCEED THE AMOUNTS PAID OR PAYABLE BY CUSTOMER TO CONTINUENT
+HEREUNDER. CERTAIN STATES AND/OR JURISDICTIONS DO NOT ALLOW THE
+EXCLUSION OF IMPLIED WARRANTIES OR LIMITATION OF LIABILITY FOR
+INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE EXCLUSIONS SET FORTH
+ABOVE MAY NOT APPLY TO CUSTOMER.
+
+8. Term and Termination. This Agreement and the licenses granted
+hereunder, is effective on the date Customer accepts the terms of
+this Agreement and shall continue unless this Agreement is terminated
+by either party pursuant to this section. Continuent may terminate
+this Agreement immediately upon notice to Customer in the event
+that Customer materially breaches any of the terms hereof. Any
+notice to Customer may be provided by email. Customer may terminate
+this Agreement at any time, with or without cause, upon notice to
+Continuent. Customer may terminate this Agreement by sending either
+an email to legal@continuent.com with Customers name or a letter
+by United States mail to: Continuent, Inc, Attn: Legal, 560 S.
+Winchester Blvd., Suite 500, San Jose, CA 95128 or to such other
+address as Continuent may specify in writing by posting the new
+address on the Continuent website. Upon termination, the license
+granted hereunder shall terminate and Customer shall promptly
+discontinue all use of the Licensed Software, erase all copies of
+the Licensed Software from Customers computers, and return to
+Continuent or destroy all copies of the Licensed Software and
+Continuent Materials on tangible media in Customers possession or
+control and certify in writing to Continuent that it has fully
+complied with these requirements. The terms of this Agreement which
+are intended to survive termination will remain in effect.
+
+9. Modifications. Continuent reserves the right to change the terms
+and conditions of this Agreement or its policies relating to the
+Licensed Software at any time, and such changes will be effective
+upon notice to Customer. Customers continued use of the Licensed
+Software after any such changes shall constitute Customers consent
+to such changes.
+
+10. Export. The Licensed Software and related technology are subject
+to U.S. export control laws and may be subject to export or import
+regulations in other countries. Customer agrees to strictly comply
+with all such laws and regulations and acknowledges that it has the
+responsibility to obtain such licenses to export, re-export, or
+import as may be required. Customer will indemnify and hold Continuent
+harmless from any and all claims, losses, liabilities, damages,
+fines, penalties, costs and expenses (including attorneys fees)
+arising from or relating to any breach by Customer of its obligations
+under this section. Customer’s obligations under this section shall
+survive the expiration or termination of this Agreement.
+
+11. Miscellaneous. Neither the rights nor the obligations arising
+under this Agreement are assignable by Customer, and any such
+attempted assignment or transfer shall be void and without effect.
+This Agreement shall be governed by and construed in accordance
+with the laws of the State of California and the United States
+without regard to the conflict of laws provisions therein. Any
+action under or relating to this Agreement shall be brought solely
+in the state and federal courts located in California, with sole
+venue in the courts located in Santa Clara County and each party
+hereby submits to the personal jurisdiction of such Courts. The
+United Nations Convention on Contracts for the International Sale
+of Goods shall not apply to this Agreement. In the event that any
+of the provisions of this Agreement is found to be contrary to law,
+then such provision shall be construed as nearly as possible to
+reflect the intention of the parties, with the other provisions
+remaining in full force and effect. This Agreement constitutes the
+entire agreement between the parties pertaining to the subject
+matter hereof, and any and all written or oral agreements previously
+existing between the parties are expressly canceled. Any modifications
+of this Agreement must be in writing and agreed to by both parties.

@@ -1,0 +1,25 @@
+#####################################
+# CHECKER.MYSQLSERVER.PROPERTIES    #
+#####################################
+
+name=mysql_response
+class=com.continuent.tungsten.monitor.checkers.JDBCMySQLDatabaseServerChecker
+
+# delay between each monitoring run - default 3000ms
+frequency=<%= ENV['OPENSHIFT_TUNGSTEN_MGR_MONITOR_INTERVAL'] %>
+# connection will be renewed after this period
+reconnectAfter=30000
+serverName=<%= ENV['OPENSHIFT_TUNGSTEN_HOST_HOST'] %>
+host=<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBHOST'] %>
+vendor=mysql
+port=<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBPORT'] %>
+driver=com.mysql.jdbc.Driver
+url=jdbc:mysql://<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBHOST'] %>:<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBPORT'] %>/tungsten
+username=<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBLOGIN'] %>
+password=<%= ENV['OPENSHIFT_TUNGSTEN_APPLIER_REPL_DBPASSWORD'] %>
+query=select 1
+queryTimeout=<%= ENV['OPENSHIFT_TUNGSTEN_MON_DB_QUERY_TIMEOUT'] %>
+queryFileName=mysql_checker_query.sql
+
+
+

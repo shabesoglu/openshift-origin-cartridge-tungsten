@@ -1,0 +1,21 @@
+-------------------
+Command: datasource 
+-------------------
+Description: Perform an operation that affects a single data source
+Syntax: 
+  datasource <host> <operation> [arguments]
+ 
+The datasource command affects a single data source.  The 
+following operations are supported. 
+
+datasource backup  - Back up data source 
+datasource fail    - Put data source into a failed state
+datasource offline - Make data source unavailable to applications
+datasource online  - Make data source available to applications
+datasource recover - Reconnect a failed/shunned data source as a slave
+datasource restore - Reload a backup to the data source
+datasource shun    - Make data source unavailable to cluster
+datasource welcome - Return a shunned data source to the cluster
+                     Try 'datasource recover' before running this command
+
+For more information, run help on one of the commands shown above. 

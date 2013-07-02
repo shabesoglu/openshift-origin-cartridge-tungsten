@@ -1,0 +1,46 @@
+-------------------
+Command: replicator 
+-------------------
+Description: Perform an operation on a replicator
+Syntax: 
+  replicator <host> <operation> 
+
+The 'replicator' performs operations on the replicator running on
+a particular host.  The supported operations are:
+
+master  - Configure replicator as master
+offline - Set replicator offline
+online  - Set replicator online
+restart - Restart the replicator process
+slave   - Configure replicator as slave of current master
+start   - Start the replicator process if it is not running
+status  - Show the current replicator process status
+stop    - Stop the replicator process if it is running
+
+Operations on the replicator should be performed with caution when
+running in automatic or manual mode.  Stopping a master replicator
+can cause accidental failover.  Stopping or restarting replicators
+can cause applications to become unavailable as it may lead to data
+sources going offline.  Finally, automatic policy rules may interfere
+with operations like 'replicator offline'.
+
+To perform operations safely on replicators you should either put
+the cluster in maintenance mode using 'set policy maintenance' or
+shun the data source associated with the replicator.
+
+Usage: 
+
+The following commands safely restart a replicator on host mercury. 
+
+  set policy maintenance
+  replicator mercury restart
+  set policy automatic
+
+The following command puts the replicator on host saturn in the offline 
+state.  
+
+  replicator saturn offline 
+
+Note that in automatic mode the cluster rules may try to bring the 
+replicator back online.  If the replicator does not go offline, ensure
+you are in maintenance mode. 

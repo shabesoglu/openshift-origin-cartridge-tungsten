@@ -1,0 +1,5 @@
+# Install Handler Definition
+#
+# A Handler that will run tar or unzip command to install a package
+#
+handler=com.continuent.tungsten.manager.handler.InstallHandler

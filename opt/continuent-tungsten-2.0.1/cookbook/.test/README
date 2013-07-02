@@ -1,0 +1,6 @@
+This tool is intended for internal testing only
+
+For documentation about the cookbook format and features,
+run
+ tungsten-cookbook --man
+

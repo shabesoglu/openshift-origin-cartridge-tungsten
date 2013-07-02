@@ -1,0 +1,29 @@
+--------------------------
+Command: datasource backup
+--------------------------
+Description: Back up a single data source
+Syntax: 
+  datasource <host> backup [backupAgent] [storageAgent] [timeout]
+ 
+The 'datasource backup' command invokes a backup on the data source
+on the named host using the default backup agent and storage agent.
+Backups taken in this way can be reloaded using the 'datasource
+restore' command.  The following command options are supported:
+
+* backupAgent - The name of a backup agent.  
+* storageAgent - The name of a storage agent.  
+* timeout - Number of seconds to wait before the backup command times out.
+
+On success the backup URL will be written to the console.  
+
+Usage:
+
+The following example performs a backup on host saturn using the
+default backup agent.  
+
+  datasource saturn backup 
+
+The following example performs a backup on host mercury using the xtrabackup
+agent, which is named explicitly.  
+
+  datasource mercury backup xtrabackup

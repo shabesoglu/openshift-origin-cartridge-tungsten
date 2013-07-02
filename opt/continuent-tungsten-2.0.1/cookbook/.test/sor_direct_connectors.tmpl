@@ -1,0 +1,56 @@
+# sor_direct_connectors : install a System of Records, master/relay Continuent Tungsten cluster with direct connections to master and slaves
+
+# To run this cookbook:
+# 1.  Modify the USER_VALUES.sh file in this directory
+# 2.  Uncomment the USER_VALUES.sh line below
+# 3.  Run the cookbook from the top-level directory
+#     tungsten-enterprise-1.5.0 $>. ./cookbook/sor.tmpl
+
+# Loads environment variables to fill in the cookbook
+# . cookbook/USER_VALUES.sh
+
+tools/tpm configure defaults --reset \
+    --log=timestamp \
+    --datasource-port=$DATASOURCE_PORT \
+    --home-directory=$CONTINUENT_ROOT \
+    --user=$USER \
+    --datasource-user=$DATASOURCE_USER \
+    --datasource-password=$DATASOURCE_PASSWORD \
+    --application-user=$APPLICATION_USER \
+    --application-password=$APPLICATION_PASSWORD \
+    --connector-listen-port=$APPLICATION_PORT \
+    --datasource-boot-script=$DATASOURCE_BOOT_SCRIPT \
+    --datasource-log-directory=$MYSQL_BINARY_LOG_DIRECTORY \
+    --mysql-connectorj-path=$CONNECTORJ \
+    --datasource-mysql-conf=$MYSQL_CONF \
+    --root-command-prefix=$ROOT_COMMAND \
+    --profile-script=$PROFILE_SCRIPT \
+    -a --svc-parallelization-type=none --channels=1 \
+    $MORE_OPTIONS \
+    $START_OPTION  
+
+tools/tpm configure $DS_NAME1 \
+    --dataservice-hosts=$MASTER1,$SLAVES1 \
+    --dataservice-connectors=$CONNECTORS1 \
+    --dataservice-master-host=$MASTER1 \
+    --connector-rw-addresses=$CONNECTOR_DIRECT_RW \
+    --connector-ro-addresses=$CONNECTOR_DIRECT_RO 
+
+#    --dataservice-witnesses=$WITNESS1
+
+tools/tpm configure $DS_NAME2 \
+    --dataservice-hosts=$MASTER2,$SLAVES2 \
+    --dataservice-relay-enabled=true \
+    --dataservice-relay-source=$DS_NAME1 \
+    --dataservice-connectors=$CONNECTORS2 \
+    --dataservice-master-host=$MASTER2 \
+    --connector-rw-addresses=$CONNECTOR_DIRECT_RW \
+    --connector-ro-addresses=$CONNECTOR_DIRECT_RO 
+
+#    --dataservice-witnesses=$WITNESS2
+
+tools/tpm configure $COMPOSITE_DS \
+    --dataservice-composite-datasources=$DS_NAME1,$DS_NAME2
+
+tools/tpm install $COMPOSITE_DS
+

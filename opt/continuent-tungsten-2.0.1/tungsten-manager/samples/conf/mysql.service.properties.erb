@@ -1,0 +1,6 @@
+# mysql.properties
+name=mysql
+command.start=service <%= ENV['OPENSHIFT_TUNGSTEN_REPL_BOOT_SERVICE_NAME'] %> start
+command.stop=service <%= ENV['OPENSHIFT_TUNGSTEN_REPL_BOOT_SERVICE_NAME'] %> stop
+command.restart=service <%= ENV['OPENSHIFT_TUNGSTEN_REPL_BOOT_SERVICE_NAME'] %> restart
+command.status=service <%= ENV['OPENSHIFT_TUNGSTEN_REPL_BOOT_SERVICE_NAME'] %> status

@@ -1,0 +1,5 @@
+# SVN Handler Definition
+#
+# A Handler that will run the "svn" command
+#
+handler=com.continuent.tungsten.manager.handler.SVNHandler

@@ -1,0 +1,5 @@
+name=tungsten_instrumentation
+class=com.continuent.tungsten.manager.checkers.TungstenReplicatorOSSLatencyLogger
+frequency=<%= ENV['OPENSHIFT_TUNGSTEN_MGR_MONITOR_INTERVAL'] %>
+
+filePath=<%= ENV['OPENSHIFT_TUNGSTEN_CURRENT_RELEASE_DIRECTORY'] %>/tungsten-manager/log/instrumentation.log

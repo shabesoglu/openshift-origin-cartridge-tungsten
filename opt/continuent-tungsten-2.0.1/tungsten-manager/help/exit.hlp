@@ -1,0 +1,12 @@
+-------------
+Command: exit
+-------------
+Description:  Leave cctrl.  
+Syntax: 
+  exit
+ 
+Exits cctrl.  This command is a synonym for 'quit'. 
+
+Usage: 
+
+   exit

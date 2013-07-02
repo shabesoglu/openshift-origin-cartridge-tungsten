@@ -1,0 +1,290 @@
+#!/bin/bash
+#
+# Script to facilitate complete VIP management for Tungsten.
+# This code has been externalized from the Java code to make it easier to
+# update, if necessary, in the field as well as to make it simpler to
+# test for the correctness of different approaches to maintaining the VIP.
+#
+# {bind|release|delete|refresh|check} <bind_host> <sudo_command> <ifconfig_path> <arp_path> <ip_address> <netmask> <interface>"
+#
+#
+
+VIP_COMMAND_SUCCESS=0
+VIP_RELEASE_SUCCESS=0
+VIP_ERR_VIP_WAS_NOT_BOUND=255
+VIP_ERR_VIP_NOT_ENABLED=1
+VIP_ERR_VIP_BOUND_RELEASE_ERROR=3
+VIP_ERR_VIP_BOUND_RELEASE_FAILED=4
+VIP_ERR_OTHER=5
+
+DEBUG=0
+VERBOSE=0
+
+
+function log
+{
+   echo $*
+}
+
+function verbose
+{
+  if [ $VERBOSE == 1 ];
+  then
+    log $*
+  fi
+}
+
+function debug
+{
+   if [ $DEBUG == 1 ];
+   then
+     log "`date`: $*"
+   fi
+}
+   
+function print_usage
+{
+  log "You passed in $# of $required_arg_count args.  The were: $*"
+  log "usage:  {bind|release|delete|refresh|check} <bind_host> <sudo_command> <ifconfig_path> <arp_path> <ip_address> <netmask> <interface>"
+}
+
+
+function is_bind_host 
+{ 
+ 	bindHostIP=`getent hosts $bind_host | awk '{print $1}'` 
+	contains_host=`$ifconfig_path | grep "inet addr:$bindHostIP"` 
+	if [ "$contains_host" == "" ]; 
+	then 
+		debug "This host, $this_host, IS NOT the bind host $bind_host" 
+		return 1 
+	fi 
+	debug "This host, $this_host, IS the bind host $bind_host" 
+
+	return 0 
+} 
+
+function check
+{
+  cmd_out=`$sudo_command $ifconfig_path $interface`
+  bind_status=`echo $cmd_out | grep "inet addr:$ip_address"`
+  if [ "$bind_status" == "" ];
+  then
+     verbose "VIP is not bound to interface $interface"
+     return 1
+  fi
+  verbose "VIP is bound to interface $interface" 
+  return 0
+}
+
+function bind
+{
+  debug "Executing: $ifconfig_path $interface $ip_address netmask $netmask"
+  cmd_out=`$sudo_command $ifconfig_path $interface $ip_address netmask $netmask`
+  retstat=$?
+  debug $cmd_out
+  cmd_out=`$sudo_command $ifconfig_path $interface`
+  bind_status=`echo $cmd_out | grep "inet addr:$ip_address"`
+  if [ "$bind_status" == "" ];
+  then
+     log "Failed to bind VIP"
+     return 1
+  fi
+  log "VIP successfully bound to interface $interface" 
+  return 0
+}
+
+function release
+{
+  debug "Executing: $ifconfig_path $interface down"
+  cmd_out=`$sudo_command $ifconfig_path $interface down`
+  retstat=$?
+  debug $cmd_out
+  cmd_out=`$sudo_command $ifconfig_path $interface`
+  debug $cmd_out
+  bind_status=`echo $cmd_out | grep "inet addr:$ip_address"`
+  if [ "$bind_status" != "" ];
+  then
+  	 debug "Executing: /sbin/ip addr del $ip_address dev $interface"
+  	 cmd_out=`$sudo_command /sbin/ip addr del $ip_address dev $interface`
+  	 debug $cmd_out
+  	 
+  	 cmd_out=`$sudo_command $ifconfig_path $interface`
+	 debug $cmd_out
+	 bind_status=`echo $cmd_out | grep "inet addr:$ip_address"`
+	 if [ "$bind_status" != "" ];
+	 then
+    	 log "VIP appears to still be bound: $bind_status"
+     	 return 1
+     fi
+  fi
+  log "VIP $ip_address successfully released from interface $interface"
+  return 0
+}
+
+function delete
+{
+  debug "Executing: $arp_path -d $ip_address"
+  entry_found=`$sudo_command $arp_path -n | grep $ip_address` 
+  debug $entry_found
+  if [ "$entry_found" ==  "" ];
+  then
+     verbose "Delete successful: no entry in ARP cache"
+     return 0
+  fi
+  cmd_out=`$sudo_command $arp_path -d $ip_address`
+  debug $cmd_out
+  entry_found=`$sudo_command $arp_path -n | grep $ip_address` 
+  debug $entry_found
+  if [ "$entry_found" ==  "" ];
+  then
+     verbose "Delete successful: no entry in ARP cache"
+     return 0
+  fi
+  no_mac=`echo $entry_found | grep incomplete`
+  debug $no_mac
+  if [ "$no_mac" ==  "" ];
+  then
+     log "Delete failed: VIP appears to still be bound"
+     log $no_mac
+     return 1
+  fi
+  verbose "Delete successful: no MAC address associated with VIP"
+  return 0
+}
+
+
+function refresh
+{
+   is_bind_host
+
+   if [ $? == 0 ];
+   then
+     check >& /dev/null
+     if [ $? == 0 ];
+     then
+       log "Refresh unecessary: VIP bound on interface $interface on this host"
+       return 0
+     fi
+   else
+     release >& /dev/null
+   fi
+
+   delete
+   
+   if [ $? != 0 ];
+   then
+     log "Refresh failed: could not delete"
+     return 1
+   fi
+
+
+   ping_result=`ping -c1 -W1 $ip_address` 
+   debug $ping_result
+   entry_found=`$sudo_command $arp_path -n | grep $ip_address` 
+
+   if [ "$entry_found" == "" ];
+   then
+     log "Refresh failed: no ARP entry found for $ip_address"
+     return 1
+   fi
+    
+   incomplete_entry=`echo $entry_found | grep incomplete`
+   if [ "$incomplete_entry" != "" ];
+   then
+     log "Refresh failed: incomplete entry for $ip_address in ARP cache"
+     return 1
+   fi	
+
+   log "Refresh successful: VIP bound to: $entry_found" 
+   return 0
+}
+
+ 
+required_arg_count=8
+root_arg_count=7
+
+if [ $# -ne $required_arg_count ];
+then
+  if [ "$USER" == "root" ];
+  then
+    if [ $# -ne $root_arg_count ];
+    then
+      # The user is root, but still the # of args is wrong
+      print_usage $*
+      exit 1
+    else
+      # Read the args but skip the sudo_command
+      command=$1
+      bind_host=$2
+      sudo_command=""
+      ifconfig_path=$3
+      arp_path=$4
+      ip_address=$5
+      netmask=$6
+      interface=$7
+    fi
+  else
+    # The user is not root and the # of args is wrong
+    print_usage $*
+    exit 1
+  fi
+else
+  # Read the args
+  command=$1
+  bind_host=$2
+  sudo_command=$3
+  ifconfig_path=$4
+  arp_path=$5
+  ip_address=$6
+  netmask=$7
+  interface=$8
+fi
+
+case "$command" in
+
+bind)
+ check
+ if [ $? == 0 ];
+ then
+   log "VIP is already bound on interface $interface"
+   exit 0
+ fi
+
+ bind
+ exit $?
+;;
+
+
+check)
+  check
+  exit $?
+;;
+
+refresh)
+  refresh
+  exit $?
+;;
+
+release)
+ check
+ if [ $? != 0 ];
+ then
+   exit 0
+ fi
+ release
+ exit $? 
+;;
+
+delete)
+ delete
+ exit $?
+;;
+
+# The following logic will be taken for any undocumented events.
+*)
+  print_usage $*
+  exit 1
+  ;;
+  
+esac
+

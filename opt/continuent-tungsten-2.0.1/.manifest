@@ -1,0 +1,27 @@
+# Build manifest file. DEPRECATED: use .manifest.json
+DATE: Tue  2 Jul 2013 09:53:25 BST
+RELEASE: continuent-tungsten-2.0.1
+USER ACCOUNT: narmitag
+BUILD_NUMBER: 
+BUILD_ID: 
+JOB_HAME: 
+BUILD_TAG: 
+HUDSON_URL: 
+SVN_REVISION: 
+HOST: Neils-MacBook-Pro-4.local
+SVN URLs:
+  
+  svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/connector
+  svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/fsm
+  svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/manager
+  svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/monitor
+  https://tungsten-replicator.googlecode.com/svn/branches/tungsten-openshift-2.0.1
+  
+  https://bristlecone.svn.sourceforge.net/svnroot/bristlecone/trunk/bristlecone
+  
+SVN Revisions:
+  fsm: Revision: 8334
+  manager: Revision: 8334
+  connector: Revision: 8334
+  replicator: Revision: 1466
+  bristlecone: Revision: 156

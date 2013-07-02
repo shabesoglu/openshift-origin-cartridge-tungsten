@@ -1,0 +1,300 @@
+            IMPLEMENTING DATASOURCE PRECEDENCE BASED FLOATING IP
+                              29 July 2010
+
+Author: Edward Archibald
+		    
+This set of rules is a variant on the FloatingIP idea.  Whereas the
+FloatingIP.drl rules will switch a VIP (Virtual IP) so that it
+is always bound to the current master database server, this approach
+allows you to use the 'precedence' value of a given datasource
+to assign the VIP.  The basic idea is that the rules will always
+keep a VIP assigned to the ONLINE datasource that has the lowest
+precedence value (the highest precedence).  This means that by
+organizing the precedence of your data sources, you can determine
+how this VIP will be assigned.
+
+The following instructions assume the VIP is 10.10.12.22 and that each
+host on which this file will exist has an 'eth0' interface.  Of course,
+if your individual hosts have different interface configurations, you will
+need to create a version of this file for each host. This
+procedure will work with any address provided the address is on the
+same subnet as all hosts that may be promoted to master.
+
+Follow the steps shown below:  
+
+1.) Ensure that your database server is listening on all IP addresses.  If
+the server listens on a single address, it will not be able to accept
+connections on the VIP.  Restart your database service if any changes are
+required.
+
+For MySQL add the following line to your my.cnf file.
+
+bind_address=0.0.0.0
+
+For PostgreSQL add the following line to your postgresql.conf file
+
+listen_addresses='*'
+
+2.) Create file
+cluster-home/conf/cluster/<clustername>/service/vip.properties
+with the following properties:
+
+# vip.properties
+name=vip
+command.start=sudo /sbin/ifconfig eth0:0 10.10.12.22
+command.stop=sudo /sbin/ifconfig eth0:0 down
+command.restart=echo "Not supported"
+command.status=sudo /sbin/ifconfig eth0:0
+
+This file maps the service start command to grabbing virtual IP
+address 10.10.12.22 on interface eth0:0.  The stop command drops
+it.  Note that your login must support running /sbin/ifconfig using
+sudo or you must run the manager as root.
+
+3.) For this step, you must already have all of your datasources
+in the cluster.  In this step, you will set the precedence for 
+each datasource based on how you want the VIP to be bound. 
+Remember that once these rules are in effect, the system will
+always keep the VIP bound to the datasource with the LOWEST precedence 
+number.  So if you have an ONLINE datasource with a precedence of 10
+and one with a precedence of 0, the VIP will be bound to the 
+datasource with precedence of 0.
+
+To modify the precedence of the datasource, you will use the cctrl 'admin'
+mode. The following example shows how we modify the precedence of three
+data sources, db1, db2, and db3 and we set the precedence of them
+to 100, 50 and 10 accordingly.  This means that as long as db3 is ONLINE,
+it will get the VIP. Then, in order, db2 and then db1.  
+
+NOTE: In the following example, the output that the admin command creates
+has been ommitted since it would make the listing unnecessarily long.
+
+$ cctrl             
+[LOGICAL] /cluster/central/> admin
+[ADMIN] /cluster/central/> edit db1
+/cluster/central/db1> precedence 100
+/cluster/central/db1*> commit
+Datasource 'db1' has been successfully updated
+[ADMIN] /cluster/central/> edit db2
+/cluster/central/db2> precedence 50
+/cluster/central/db2*> commit
+Datasource 'db2' has been successfully updated
+[ADMIN] /cluster/central/> edit db3
+/cluster/central/db3> precedence 10
+/cluster/central/db3*> commit
+Datasource 'db3' has been successfully updated
+
+
+4.) Next add the rules file, PrecedenceFloatingIP.drl to the
+tungsten-cluster-manager/rules directory and restart the manager.
+
+NOTE: When the rules initialize, or any time the datasource that
+has the VIP changes to a non-ONLINE state, the rules will always
+bind the VIP to the current master datasource but as long as
+there is a higher precedence datasource available, it will 
+immediately be shifted to that datasource.
+
+5.) Once the manager restarts, login with cctrl.  You can confirm
+that the 'vip' command works by doing the following.  In this
+example, we will use host 'db2' and 'db3' as our host names. This
+is important, because this command will also get executed by the
+rules when the time comes.
+
+[LOGICAL] /cluster/central/> service */vip status
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+[LOGICAL] /cluster/central/> service db2/vip start 
+
+[LOGICAL] /cluster/central/> service db2/vip status
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|inet addr:192.168.15.55  Bcast:192.168.15.255  Mask:255.255.255.0      |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+[LOGICAL] /cluster/central/> service db2/vip stop  
+
+[LOGICAL] /cluster/central/> service db2/vip status
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+You should try these same commands on all cluster hosts to ensure that
+the command works on each host before proceeding.
+
+6.) In the previous step, if you execute the service <host>/vip status
+command for all of the hosts that can have the VIP bound to them, 
+only one of the hosts should have 'inet addr' set to a valid address at
+any one time.  The output of the command will look something like this:
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|inet addr:192.168.15.55  Bcast:192.168.15.255  Mask:255.255.255.0      |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+All of the other hosts should look something like this:
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+
+7.) Now, to validate that the VIP moves to the correct host, you can do 
+a test as follows.  Start by listing where the VIP is currently
+pointing, in cctrl, as follows:
+
+a) Do a listing to verify that all datasources are online.  Remember
+that in our example, db3 has the lowest precedence number, so it will
+have the highest precedence for being bound to the VIP.  Then db2 would
+be chosen, and then db1.  What we are going to do is to verify that
+the vip moves as we remove the preferred datasource by taking them
+OFFLINE.
+
+[LOGICAL] /cluster/central/> ls
+DATASOURCES:
++-----------------------------------------------------------------------+
+|db1(master:ONLINE, progress=1)                                         |
++-----------------------------------------------------------------------+
+|  REPLICATOR(role=master, state=ONLINE)                                |
+|  DATASERVER(state=ONLINE)                                             |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db2(slave:ONLINE, progress=1, latency=0.0)                             |
++-----------------------------------------------------------------------+
+|  REPLICATOR(role=slave, master=db1, state=ONLINE)                     |
+|  DATASERVER(state=ONLINE)                                             |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db3(slave:ONLINE, progress=-1, latency=-1.0)                           |
++-----------------------------------------------------------------------+
+|  REPLICATOR(role=slave, master=db1, state=ONLINE)                     |
+|  DATASERVER(state=ONLINE)                                             |
++-----------------------------------------------------------------------+
+
+b) Verify that the datasource db3 ishas the VIP bound:
+
+[LOGICAL] /cluster/central/> service */vip status
++-----------------------------------------------------------------------+
+|db1                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:24:8c:21:a6:36                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:251                                                |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db3                                                                    |
++-----------------------------------------------------------------------+
+|eth1:0    Link encap:Ethernet  HWaddr 00:0c:29:1b:82:1c                |
+|inet addr:192.168.1.111  Bcast:192.168.1.255  Mask:255.255.255.0       |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+c) Now put the datasource db3 into the offline state and see what happens.
+You MUST do this in manual mode or the rules will put the datasource db3
+back into the ONLINE state.
+
+[LOGICAL] /cluster/central/> set policy manual 
+policy mode is now MANUAL
+[LOGICAL] /cluster/central/> datasource db3 offline
+DataSource 'db3' is now OFFLINE
+[LOGICAL] /cluster/central/> service */vip status
++-----------------------------------------------------------------------+
+|db1                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:24:8c:21:a6:36                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:251                                                |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|inet addr:192.168.1.111  Bcast:192.168.1.255  Mask:255.255.255.0       |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db3                                                                    |
++-----------------------------------------------------------------------+
+|eth1:0    Link encap:Ethernet  HWaddr 00:0c:29:1b:82:1c                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+d) Notice how the VIP moved from db3 to db2.  Now put db3 back online, and the 
+VIP should move back:
+
+[LOGICAL] /cluster/central/> datasource db3 online
+DataSource 'db3' is now ONLINE
+[LOGICAL] /cluster/central/> service */vip status
++-----------------------------------------------------------------------+
+|db1                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:24:8c:21:a6:36                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:251                                                |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db2                                                                    |
++-----------------------------------------------------------------------+
+|eth0:0    Link encap:Ethernet  HWaddr 00:0c:29:fd:3c:3e                |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+|db3                                                                    |
++-----------------------------------------------------------------------+
+|eth1:0    Link encap:Ethernet  HWaddr 00:0c:29:1b:82:1c                |
+|inet addr:192.168.1.111  Bcast:192.168.1.255  Mask:255.255.255.0       |
+|          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1           |
+|          Interrupt:19 Base address:0x2024                             |
++-----------------------------------------------------------------------+
+
+e) Continue along this line until you have confirmed that the VIP moves
+to the correct datasource depending on the state of the datasources. And, 
+of course, if the VIP is bound to a datasource that fails for some reason,
+it will also be automatically moved.
+
+
+
+
+
+
+
+
+

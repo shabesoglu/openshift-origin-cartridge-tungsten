@@ -1,0 +1,49 @@
+{
+  "date": "Tue  2 Jul 2013 09:53:25 BST",
+  "product": "Continuent Tungsten",
+  "version":
+  {
+    "major": 2,
+    "minor": 0,
+    "revision": 1
+  },
+  "userAccount": "narmitag",
+  "host": "Neils-MacBook-Pro-4.local",
+  "hudson":
+  {
+    "buildNumber": null,
+    "buildId": null,
+    "jobName": "",
+    "buildTag": "",
+    "URL": "",
+    "SVNRevision": null
+  },
+  "SVN":
+  {
+    "connector":
+    {
+      "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/connector",
+      "revision": 8334
+    },
+    "fsm":
+    {
+      "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/fsm",
+      "revision": 8334
+    },
+    "manager":
+    {
+      "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/manager",
+      "revision": 8334
+    },
+    "replicator":
+    {
+      "URL": "https://tungsten-replicator.googlecode.com/svn/branches/tungsten-openshift-2.0.1",
+      "revision": 1466
+    },
+    "bristlecone":
+    {
+      "URL": "https://bristlecone.svn.sourceforge.net/svnroot/bristlecone/trunk/bristlecone",
+      "revision": 156
+    }
+  }
+}
