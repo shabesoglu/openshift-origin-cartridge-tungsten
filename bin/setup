@@ -22,9 +22,17 @@ ln -s releases/continuent-tungsten-2.0.1-335_pid14662/ tungsten
 find ./ -type f -exec sed -i  "s/centos1/$OPENSHIFT_TUNGSTEN_DB_HOST/" {} \;
 find ./ -type f -exec sed -i  "s/192.168.0.201/$OPENSHIFT_TUNGSTEN_DB_HOST/" {} \;
 find ./ -type f -exec sed -i  "s/RUN_AS_USER=tungsten/RUN_AS_USER=$USER/" {} \;
+find ./ -type f -exec sed -i  "s/127.0.0.1/$OPENSHIFT_TUNGSTEN_DB_HOST/" {} \;
 cd share
 rm mysql-connector-java.jar
 ln -s mysql-connector-java-5.1.19-bin.jar mysql-connector-java.jar
 
+for app in tungsten-connector tungsten-replicator tungsten-manager
+do
+	rm ~/tungsten/opt/continuent/tungsten/$app/lib/mysql-connector-java.jar
+	ln -s ~/tungsten/opt/continuent/share/mysql-connector-java.jar ~/tungsten/opt/continuent/tungsten/$app/lib/mysql-connector-java.jar
+	
+	echo "wrapper.port.address=$OPENSHIFT_TUNGSTEN_DB_HOST" >> ~/tungsten/opt/continuent/tungsten/$app/conf/wrapper.conf
+done
 
 
