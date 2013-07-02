@@ -1,4 +1,4 @@
-#OpenShift Tungsten cartridge
+#OpenShift Tungsten cartridge.
 
 This is a 'downloadable' cartridge, forked from a project by the same name by Neil Armitage (narmitag).
 
