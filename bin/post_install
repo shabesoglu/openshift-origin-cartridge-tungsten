@@ -7,6 +7,7 @@ port=$OPENSHIFT_TUNGSTEN_DB_PORT
 username=$OPENSHIFT_TUNGSTEN_DB_USERNAME
 password=$OPENSHIFT_TUNGSTEN_DB_PASSWORD
 tungsten_password=$OPENSHIFT_TUNGSTEN_SYS_PASSWORD
+tungsten_password='secret'         #HACK for the moment
 host=$OPENSHIFT_TUNGSTEN_DB_HOST
 
 echo "drop database test;
