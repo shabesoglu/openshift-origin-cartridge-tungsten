@@ -1,0 +1,1233 @@
+package com.continuent.tungsten.cluster.manager.policy;
+ 
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
+import java.util.Iterator;
+import java.util.HashMap;
+import com.continuent.tungsten.common.cluster.resource.*;
+import com.continuent.tungsten.common.utils.StatisticsMap;
+import com.continuent.tungsten.common.config.TungstenProperties;
+import com.continuent.tungsten.manager.resource.logical.proxy.*;
+import com.continuent.tungsten.manager.core.ManagerConf;
+import com.continuent.tungsten.common.cluster.resource.notification.*;
+import com.continuent.tungsten.common.cluster.resource.DataSourceAlertStatus;
+import com.continuent.tungsten.cluster.manager.policy.EnterpriseRulesConsequenceDispatcher;
+import com.continuent.tungsten.cluster.manager.ClusterManagementHelper;
+import com.continuent.tungsten.manager.cluster.policy.ClusterPolicyManagerMode;
+import com.continuent.tungsten.cluster.manager.policy.*;
+import com.continuent.tungsten.manager.exception.ClusterManagerException;
+import com.continuent.tungsten.cluster.manager.rules.configuration.*;
+import com.continuent.tungsten.cluster.manager.alarm.ManagerStoppedAlarm;
+import com.continuent.tungsten.cluster.manager.alarm.ClusterAlarm;
+import com.continuent.tungsten.cluster.manager.alarm.MembershipInvalidAlarm;
+import com.continuent.tungsten.cluster.manager.alarm.*;
+import com.continuent.tungsten.cluster.manager.event.*;
+import org.drools.runtime.rule.WorkingMemoryEntryPoint;
+import org.drools.runtime.rule.*;
+
+import org.drools.runtime.StatefulKnowledgeSession;
+import org.apache.log4j.Logger;
+
+global ClusterManagementHelper cluster;
+global Logger logger;
+global EnterprisePolicyManager policyMgr;
+global ClusterPolicyManagerMode mode; 
+global Boolean sendNotifications;
+global EnterpriseRulesConsequenceDispatcher consequences;
+global Map resourceStates;
+global Map alarms;
+
+declare ClusterResourceNotification
+	@role(event)
+end
+
+declare RemoteDataServiceHeartbeatNotification
+    @role(event)
+end
+
+declare ReplicatorNotification
+	@role(event)
+end
+
+declare DataServerNotification
+	@role(event)
+end
+
+declare ManagerNotification
+	@role(event)
+end
+
+declare DataSource
+	@role(event)
+end
+
+declare ManagerStoppedAlarm
+	@role(event)
+end
+
+declare MemberHeartbeatGapAlarm
+	@role(event)
+end
+
+declare DataServerStoppedAlarm
+	@role(event)
+end
+
+declare MembershipInvalidAlarm
+	@role(event)
+end
+
+declare ManagerHeartbeat
+	@role(event)
+end
+
+declare ClusterMemberHeartbeat
+	@role(event)
+end
+
+declare RemoteDataServiceUnreachableAlarm
+   @role(event)
+end
+
+query "STOPPED MANAGER ALARMS" 
+       stoppedManager : ManagerStoppedAlarm()
+end  
+
+query "INVALID MEMBERSHIP ALARMS" 
+       alarm : MembershipInvalidAlarm()
+end  
+
+
+/*
+** UTILITY RULES
+*/
+rule "0000: LAST CHANCE CLEANUP"
+salience 0
+	when
+	   newNotification : ClusterResourceNotification(
+	   							$resourceName : resourceName,
+								$resourceType : resourceType)
+									from entry-point "MONITORING"
+									
+		oldNotification : ClusterResourceNotification(
+								resourceName == $resourceName,
+								resourceType == $resourceType,
+								this before newNotification)
+									from entry-point "MONITORING"
+			
+		
+	then
+	    logger.info("SHOULD NOT GET HERE");
+		consequences.retractFact(oldNotification, true);
+end
+
+rule "0000: INITIALIZE DATASERVICE STATE FROM COORDINATOR OR AS COORDINATOR"
+salience 0
+    when
+     	configuration : EnterpriseRulesConfiguration(initialized == false) 
+							from entry-point "MONITORING"
+    then
+        logger.info("CONSEQUENCE");
+    	consequences.initState(configuration);
+end
+
+rule "0050: SHOW MEMBER HEARTBEAT"
+salience 50
+	when
+	    eval(false)
+	    memberHeartbeat : ClusterMemberHeartbeat() from entry-point "MONITORING"
+	then
+		logger.info(memberHeartbeat);
+end
+
+
+rule "0050: SHOW MEMBERS"
+salience 50
+	when
+	    heartbeat : ManagerHeartbeat() from entry-point "MONITORING"
+	then
+	    if (heartbeat.incrementTracker() % 5 == 0)
+	    {
+			logger.info(cluster.clusterMembers());
+		}
+end
+
+rule "0050: SHOW MY HEARTBEAT"
+salience 50
+	when
+	    eval(false)
+	    managerHeartbeat : ManagerHeartbeat() from entry-point "MONITORING"
+	then
+		logger.info(managerHeartbeat);
+end
+
+/*
+** RULES TO PREVENT FLAPPING AND INVALID STATES
+*/
+rule "0100: PREVENT REPLICATOR RECOVERY FLAPPING"
+no-loop
+salience 100
+ when
+		  	lastReplicatorNotification :  ReplicatorNotification(
+												$replicatorName : resourceName,
+												(role == "master" || 
+												 role == "slave"),
+				                                 (resourceState == ResourceState.ONLINE ||
+				                                 resourceState == ResourceState.SYNCHRONIZING))
+				                                	from entry-point "MONITORING"
+			
+				
+		      serverNotification :  DataServerNotification(
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING),
+										this after lastReplicatorNotification)
+											from entry-point "MONITORING"
+											
+			currentReplicatorNotification :  ReplicatorNotification(
+											    resourceName == $replicatorName,
+				                                resourceState == ResourceState.SUSPECT,
+				                                this after [ 1s, 20s ] lastReplicatorNotification)
+				                                	from entry-point "MONITORING"
+				                                	
+													
+			dataSource : DataSource(name == $replicatorName,
+				                        state != ResourceState.SHUNNED,
+				                        alertStatus != DataSourceAlertStatus.DIMINISHED) 
+				                        from entry-point "MONITORING"
+				                        
+		    eval(cluster.managerIsOnline($replicatorName))
+			eval(cluster.isCoordinator())
+			eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)		
+ then
+ 	logger.info("CONSEQUENCE");
+ 	consequences.preventReplicatorRecoveryFlapping(dataSource,
+            											  $replicatorName);
+ end
+
+/*
+** BASIC RECOVERY RULES
+*/
+rule "0200: RECOVER MASTER DATASOURCE BY FAILING OVER"
+no-loop
+salience 200
+	when								
+		failedDataSource : DataSource(state == ResourceState.FAILED,
+		                              $dataServiceName : dataServiceName,
+		                              $dsName : name,
+		                              (role == "master" || role == "relay"),
+		                              composite == false) from entry-point "MONITORING"
+		                              
+		not (DataSource(name != $dsName, 
+		                dataServiceName == $dataServiceName,
+						(role == "master" || role == "relay"),
+						composite == false,
+						state == ResourceState.ONLINE) from entry-point "MONITORING")
+		
+		dataSourceToPromote : DataSource(name != $dsName,
+		                                 dataServiceName == $dataServiceName,
+		                                 precedence != -1,
+										 $dsToPromoteName : name,
+										 ((role == "slave" && state == ResourceState.ONLINE) ||
+										 (role == "standby" && state == ResourceState.OFFLINE))
+										 ) from entry-point "MONITORING"			 
+		
+		eval(cluster.managerIsOnline($dsToPromoteName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)
+														
+	then
+		logger.info("CONSEQUENCE");
+	   	consequences.automaticFailover(failedDataSource,
+            				$dataServiceName, dataSourceToPromote,
+  							$dsName);
+			
+end
+
+rule "0201: RECOVER COMPOSITE DATASOURCES TO ONLINE"
+no-loop
+salience 201
+	when
+		compositeDataSource :  DataSource($dataSourceName : name,
+								 $dataServiceName : dataServiceName, 
+								 state == ResourceState.OFFLINE,
+								 (alertStatus != DataSourceAlertStatus.DIMINISHED &&
+								  alertStatus != DataSourceAlertStatus.CRITICAL),
+		                         $dataSourceState : state,
+		                         $dataSourceRole : role,
+		                         (role == "master" || role == "slave"),
+		                         composite == true) from entry-point "MONITORING"
+		                         
+		primaryDataSource : DataSource(dataServiceName == $dataSourceName, 
+		                               (role == "master" || role == "relay"),
+		                               state == ResourceState.ONLINE,
+		                               composite == false) from entry-point "MONITORING"
+		                               
+		                         
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)		
+	then	
+		logger.info("CONSEQUENCE");
+		consequences.keepCompositeDataSourcesOnline($dataServiceName,
+            				$dataSourceState, $dataSourceName, 
+            				compositeDataSource);
+end
+
+rule "0202: RECOVER OFFLINE PHYSICAL DATASOURCES TO ONLINE"
+no-loop
+salience 202
+	when		
+		replicatorNotification :  ReplicatorNotification(
+										$replicatorName : resourceName,
+										$replRole : role,
+										(role == "master" || 
+										 role == "slave" || 
+										 role == "relay"),
+		                                resourceState == ResourceState.ONLINE)
+		                                	from entry-point "MONITORING"
+		
+		serverNotification :  DataServerNotification(
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING))
+											from entry-point "MONITORING"
+		
+												  
+		dataSource :  DataSource(name == $replicatorName,
+								 $dataServiceName : dataServiceName,
+								 state == ResourceState.OFFLINE,
+								 (alertStatus != DataSourceAlertStatus.DIMINISHED &&
+								  alertStatus != DataSourceAlertStatus.CRITICAL),
+		                         $dataSourceState : state,
+		                         role == $replRole) from entry-point "MONITORING"
+		                         
+		 not (ManagerStoppedAlarm(resourceName == $replicatorName)
+	                             from entry-point "MONITORING")
+	                        
+		eval(cluster.managerIsOnline($replicatorName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)		
+	then
+	    logger.info("CONSEQUENCE");
+		consequences.keepPhysicalDataSourcesOnline(dataSource,
+            				$dataSourceState, $dataServiceName,
+            				$replicatorName, false);
+       
+end
+
+rule "0203: RECOVER FAILED PHYSICAL DATASOURCES TO ONLINE"
+no-loop
+salience 203
+	when		
+		replicatorNotification :  ReplicatorNotification(
+										$replicatorName : resourceName,
+										$replRole : role,
+										(role == "master" || 
+										 role == "slave" || 
+										 role == "relay"),
+		                                resourceState == ResourceState.ONLINE)
+		                                	from entry-point "MONITORING"
+		
+		serverNotification :  DataServerNotification(
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING))
+											from entry-point "MONITORING"
+		
+												  
+		dataSource :  DataSource(name == $replicatorName,
+								 $dataServiceName : dataServiceName,
+								 state == ResourceState.FAILED,
+								 alertStatus != DataSourceAlertStatus.DIMINISHED,
+		                         $dataSourceState : state,
+		                         role == $replRole) from entry-point "MONITORING"
+		                         
+		 not (ManagerStoppedAlarm(resourceName == $replicatorName)
+	                             from entry-point "MONITORING")
+	                        
+		eval(cluster.managerIsOnline($replicatorName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)		
+	then
+		logger.info("CONSEQUENCE");
+		consequences.keepPhysicalDataSourcesOnline(dataSource,
+            				$dataSourceState, $dataServiceName,
+            				$replicatorName, true);
+       
+end
+
+
+rule "0204: RECOVER MASTER REPLICATORS TO ONLINE"
+no-loop
+salience 204
+	when
+	
+		replicatorNotification :  ReplicatorNotification(
+										$replicatorName : resourceName,
+										$replProps : resourceProps,
+										$replRole : role,
+		                                (resourceState == ResourceState.OFFLINE ||
+		                                resourceState == ResourceState.SUSPECT))
+		                                	from entry-point "MONITORING"
+		
+		serverNotification :  DataServerNotification(
+										$dataServiceName : clusterName,
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING),
+										this after replicatorNotification)
+											from entry-point "MONITORING"
+											
+		dataSource : DataSource(name == $replicatorName,
+		                        state != ResourceState.SHUNNED,
+		                        alertStatus != DataSourceAlertStatus.DIMINISHED,
+								role == $replRole,
+								(role == "master" || role == "relay")) from entry-point "MONITORING"
+								
+		
+		eval(cluster.managerIsOnline($replicatorName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)	
+	then
+		logger.info("CONSEQUENCE");
+		consequences.keepMasterReplicatorsOnline(dataSource, $dataServiceName, $replicatorName);
+end
+
+rule "0205: RECOVER SLAVE REPLICATORS TO ONLINE"
+no-loop
+salience 205
+	when	
+		replicatorNotification :  ReplicatorNotification(
+										$replicatorName : resourceName,
+										$replProps : resourceProps,
+										$replRole : role,
+		                               (resourceState == ResourceState.OFFLINE ||
+		                                 resourceState == ResourceState.SUSPECT))
+		                                	from entry-point "MONITORING"
+		
+		serverNotification :  DataServerNotification(
+										$dataServiceName : clusterName,
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING),
+										this after replicatorNotification)
+											from entry-point "MONITORING"
+											
+		slaveDataSource : DataSource(name == $replicatorName,
+		                        state != ResourceState.SHUNNED,
+		                        alertStatus != DataSourceAlertStatus.DIMINISHED,
+		                        role == $replRole,
+								(role == "slave" || role == "standby")) from entry-point "MONITORING"
+								
+		primaryDatasource : DataSource($masterDsName : name,
+									  state == ResourceState.ONLINE,
+									  role == "master" || role == "relay") from entry-point "MONITORING"
+									  
+		eval(cluster.managerIsOnline($replicatorName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)		
+	then
+		logger.info("CONSEQUENCE");
+		consequences.keepSlaveReplicatorsOnline(slaveDataSource,
+            $masterDsName, replicatorNotification,
+            $replicatorName, $dataServiceName);
+end
+
+
+
+rule "0206: RECOVER FROM ALERT STATUS"
+no-loop
+salience 206
+	when
+		replicatorNotification :  ReplicatorNotification(
+										$replicatorName : resourceName,
+										$replRole : role,
+										(role == "master" || 
+										 role == "slave" || 
+										 role == "standby"),
+		                                resourceState == ResourceState.ONLINE)
+		                                	from entry-point "MONITORING"
+		
+		serverNotification :  DataServerNotification(
+										resourceName == $replicatorName,
+										(resourceState == ResourceState.ONLINE 
+                                         || resourceState == ResourceState.SYNCHRONIZING))
+											from entry-point "MONITORING"
+		
+												  
+		dataSource :  DataSource(name == $replicatorName,
+		                         $dataServiceName : dataServiceName, 
+		                         state != ResourceState.FAILED,
+		                         state != ResourceState.OFFLINE,
+								 (alertStatus == DataSourceAlertStatus.CRITICAL ||
+								  alertStatus == DataSourceAlertStatus.DIMINISHED),
+		                         role == $replRole) from entry-point "MONITORING"
+		                         
+		 not (ManagerStoppedAlarm(resourceName == $replicatorName)
+	                             from entry-point "MONITORING")
+	                        
+		eval(cluster.managerIsOnline($replicatorName))
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.AUTOMATIC)
+
+	then
+		logger.info(cluster.dataSourceAlert($dataServiceName, $replicatorName, 
+		                                     DataSourceAlertStatus.OK, ""));
+	
+end
+
+rule "0207: RECOVER MERGED MEMBERS"
+salience 207
+	when
+		manager : ManagerNotification($resourceName : resourceName,
+									  resourceState != ResourceState.ONLINE)
+								   from entry-point "MONITORING"
+								   
+		lastNotification :  ClusterResourceNotification(
+									resourceType != ResourceType.MANAGER,
+									resourceName == $resourceName,
+									this after manager) 
+									from entry-point "MONITORING"
+	then	
+		Object[] params = {$resourceName};
+		logger.info(String.format("MERGED MEMBER '%s' IS NOW ONLINE", params));
+		manager.setResourceState(ResourceState.ONLINE);
+		consequences.updateFact(manager);
+end
+
+rule "0208: RECOVER AND RECONCILE REMOTE DATA SERVICE STATE"
+salience 208
+	when 
+		notification : RemoteDataServiceHeartbeatNotification(resourceState == ResourceState.ONLINE,
+		                              $remoteManagerName : memberName,
+		                              $dataServiceName : resourceName)
+						from entry-point "MONITORING"
+						
+		not (RemoteDataServiceUnreachableAlarm(resourceName == $dataServiceName)
+		                              from entry-point "MONITORING")
+		                              
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)
+		eval(cluster.isCoordinator())
+	then
+		Object params[] = {$remoteManagerName, $dataServiceName};
+	   	consequences.reconcileCompositeDataService($dataServiceName, $remoteManagerName, null);
+	   	consequences.retractFact(notification);
+end
+
+rule "0209: PREVENT MULTIPLE ONLINE MASTERS"
+salience 209
+	when									  
+		ds1 :  DataSource($ds1Name : name,
+						  composite == false,
+		                  $dataServiceName1 : dataServiceName, 
+								 	(state != ResourceState.FAILED &&
+								 	state != ResourceState.SHUNNED),
+		                        	role == "master") from entry-point "MONITORING"
+								
+		                                	
+		ds2 :  DataSource($ds2Name : name,
+		                  composite == false,
+		                    $dataServiceName2 : dataServiceName,
+		                    dataServiceName == $dataServiceName1,
+							name != $ds1Name,
+								 (state != ResourceState.FAILED &&
+								  state != ResourceState.SHUNNED),
+		                         role == "master") from entry-point "MONITORING"
+					
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+	then
+		logger.info("CONSEQUENCE");
+	    consequences.preventMultipleOnlineMasters($dataServiceName1,
+            				$ds1Name, $dataServiceName2, 
+            				$ds2Name);
+end    
+
+/*
+** FAULT FENCING RULES
+*/
+
+rule "0300: FENCE MASTER VIP"
+salience 300
+no-loop
+when
+	ManagerStoppedAlarm : ManagerStoppedAlarm($resourceName : resourceName)
+																		
+	masterDataSource : DataSource(name == $resourceName,
+								  state == ResourceState.ONLINE,
+								  alertStatus == DataSourceAlertStatus.OK,
+								  role == "master",
+								  vipIsBound == true) from entry-point "MONITORING"
+
+	eval (policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+	eval (cluster.clusterVIPIsEnabled() && cluster.clusterVIPIsFailSafe())
+	eval (cluster.isCoordinator())
+then
+	logger.info("CONSEQUENCE");
+	consequences.releaseMasterVIP(masterDataSource, $resourceName);
+		
+end
+
+
+rule "0301: FENCE STOPPED REPLICATORS BY WARNING"
+salience 301
+	when
+		currentNotification :  ReplicatorNotification(
+									$resourceName : resourceName,
+									$newResourceState : resourceState,
+									resourceState == ResourceState.STOPPED)
+									from entry-point "MONITORING" 
+									
+		dataSource :  DataSource(name == $resourceName,
+								 (state != ResourceState.FAILED && 
+								 state != ResourceState.SHUNNED),
+								 alertStatus != DataSourceAlertStatus.DIMINISHED)
+								 from entry-point "MONITORING"
+								 
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)
+	then
+	 	logger.info("CONSEQUENCE");	
+		consequences.warnOfStoppedReplicators(dataSource, $resourceName);
+end
+
+rule "0302: FENCE FAILED REPLICATOR"
+salience 302
+	when
+		replicatorNotification :  ReplicatorNotification(
+										$dataServiceName : clusterName,
+										$replicatorName : resourceName,
+										$replState : resourceState,
+		                                resourceState == ResourceState.STOPPED ||
+		                                resourceState == ResourceState.SUSPECT ||
+		                                resourceState == ResourceState.UNKNOWN)
+		                                from entry-point "MONITORING"
+		
+		not (DataSource(name != $replicatorName,
+					   state == ResourceState.FAILED,
+					   role == "master") from entry-point "MONITORING")						   						   
+		
+		dataSource : DataSource(name == $replicatorName,
+								state == ResourceState.ONLINE,
+								$role : role) from entry-point "MONITORING"
+								
+		not (ManagerStoppedAlarm(resourceName == $replicatorName)
+		                        from entry-point "MONITORING")		
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+		eval((cluster.clusterGetBooleanProperty(ManagerConf.POLICY_FENCE_SLAVE_REPLICATOR, null) && $role.equals("slave")) ||
+			 (cluster.clusterGetBooleanProperty(ManagerConf.POLICY_FENCE_MASTER_REPLICATOR, null) && $role.equals("master")))
+	then
+		logger.info("CONSEQUENCE");
+	   	consequences.detectAndFenceFailedReplicator(dataSource,
+            $dataServiceName, $replicatorName, $replState, $role);
+		
+end
+
+rule "0303: FENCE FAILED NODE"
+salience 303
+	when
+	  
+		alarm : NodeFailedAlarm($serverName : resourceName) 
+		                              from entry-point "MONITORING"
+		                              
+		dataSource : DataSource(name == $serverName,
+		                        $dataServiceName : dataServiceName,
+								state != ResourceState.FAILED && 
+		                        state != ResourceState.SHUNNED,
+		                  		alertStatus != DataSourceAlertStatus.CRITICAL,
+								$role : role) from entry-point "MONITORING"
+								
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+														
+	then
+		logger.info("CONSEQUENCE");
+		consequences.fenceFailedNode(alarm, $serverName);
+end
+
+rule "0304: FENCE STOPPED DATASERVER"
+salience 304
+	when
+		alarm : DataServerStoppedAlarm($serverName : resourceName) 
+		                              from entry-point "MONITORING"
+		                              
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+														
+	then
+		logger.info("CONSEQUENCE");
+		consequences.fenceFailedDataServer($serverName, alarm);
+end
+
+
+rule "0305: FENCE UNREACHABLE REMOTE SERVICE"
+salience 305
+	when
+	  
+		alarm : RemoteDataServiceUnreachableAlarm($dataServiceName : resourceName,
+		                                      $memberName : memberName)
+		                              from entry-point "MONITORING"
+		                              
+		dataSource : DataSource(name == $dataServiceName,
+								state != ResourceState.FAILED && 
+		                        state != ResourceState.SHUNNED,
+		                  		alertStatus != DataSourceAlertStatus.CRITICAL,
+								$role : role) from entry-point "MONITORING"
+								
+		eval(cluster.isCoordinator())
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+														
+	then
+		logger.info("CONSEQUENCE");
+		consequences.reconcileCompositeDataService($dataServiceName, $memberName, alarm);
+end
+
+rule "0400: RETRACT ALARMS FOR SHUNNED/FAILED MEMBERS"
+salience 400
+	when
+	 	shunnedDataSource : DataSource($resourceName : name,
+	 								state == ResourceState.SHUNNED ||
+	 								state == ResourceState.FAILED)
+	 								from entry-point "MONITORING"
+		
+		alarm : ClusterAlarm(resourceName == $resourceName)
+							from entry-point "MONITORING"
+							 
+	then	
+		logger.info("RETRACTING ALARM FOR SHUNNED/FAILED RESOURCE:" + shunnedDataSource);
+		consequences.retractFact(alarm, true);
+end
+
+rule "0401: RETRACT ALARMS FOR ALIVE DATA SERVERS"
+salience 401
+	when
+								
+		lastNotification :  DataServerNotification(
+									$resourceName : resourceName,
+									resourceState == ResourceState.ONLINE) 
+									from entry-point "MONITORING"
+								
+		alarm : DataServerStoppedAlarm(resourceName == $resourceName)
+							from entry-point "MONITORING"
+							 
+	then	
+		logger.info("RETRACTING ALARM FOR ONLINE DATA SERVER: " + alarm);
+		consequences.retractFact(alarm, true);
+end 
+
+
+rule "0402: RETRACT STALE NOTIFICATIONS"
+salience 402
+	when
+	   newNotification : ClusterResourceNotification(
+	   							$resourceName : resourceName,
+								$resourceType : resourceType)
+									from entry-point "MONITORING"
+									
+	  oldNotification : ClusterResourceNotification(
+								resourceName == $resourceName,
+								resourceType == $resourceType,
+								this before newNotification)
+									from entry-point "MONITORING"			
+		
+	then
+		consequences.retractFact(oldNotification);
+end
+
+rule "0403: RETRACT MEMBER DERIVED ALARMS FOR ALIVE CLUSTER MEMBERS"
+salience 403
+	when
+		lastNotification :  ClusterMemberHeartbeat(
+									$resourceName : resourceName)
+									from entry-point "MONITORING"
+									
+		currentNotification :  ClusterMemberHeartbeat(
+									resourceName == $resourceName,
+									resourceState == ResourceState.ONLINE,
+									this after lastNotification)
+									from entry-point "MONITORING"
+		
+		alarm : MemberDerivedAlarm(resourceName == $resourceName) 
+							from entry-point "MONITORING"
+							 
+	then	
+		
+		logger.info("RETRACTING ALARM FOR ONLINE RESOURCE: " + alarm);
+		consequences.retractFact(alarm, true);
+end
+
+rule "0404: RETRACT ALARMS FOR ALIVE REMOTE SERVICES"
+salience 404
+	when
+		
+		alarm : RemoteDataServiceUnreachableAlarm($dataServiceName : resourceName)
+													from entry-point "MONITORING"
+		
+		notification : RemoteDataServiceHeartbeatNotification(resourceState == ResourceState.ONLINE,
+		                              resourceName == $dataServiceName,
+		                              this after alarm)
+						from entry-point "MONITORING"
+							 
+	then
+		consequences.retractFact(alarm);
+end 
+  
+
+/*
+** If we lost the manager, we may also lose a database server,
+** so we need to check this here. In particular, if the lost manager
+** was on a master, we need to check it 'by proxy' to make sure
+** that we can detect failures even if the manager is gone.
+*/		
+rule "0500: INVESTIGATE DATA SERVER LIVENESS BY PROXY"
+salience 500
+  when
+    
+    alarm : ManagerStoppedAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+								   
+	not (DataServerStoppedAlarm(resourceName == $resourceName)
+								   from entry-point "MONITORING")
+    						   
+	not(DataSource(name == $resourceName,
+	            $dataServiceName : dataServiceName,
+				(state == ResourceState.FAILED ||
+				 state == ResourceState.SHUNNED || 
+	      		 alertStatus == DataSourceAlertStatus.CRITICAL)) 
+	      		 from entry-point "MONITORING")
+								   							 
+	eval(!cluster.clusterGetMemberName().equals($resourceName))				
+	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+  then
+  	logger.info("CONSEQUENCE");
+    consequences.investigateDataServerLiveness(cluster.clusterGetName(), $resourceName, null);
+end
+
+
+rule "0501: INVESTIGATE OTHER NODE CONNECTIVITY: FAILED MANAGER"
+salience 501
+	when
+		alarm : ManagerStoppedAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+	
+	    not (NodeFailedAlarm(resourceName == $resourceName) 
+	                               from entry-point "MONITORING")
+								 							   										
+	then
+		logger.info("CONSEQUENCE");
+		consequences.investigateNodeLiveness(alarm, $resourceName);
+end	
+
+rule "0502: INVESTIGATE OTHER NODE CONNECTIVITY: HEARTBEAT GAP"
+salience 502
+	when
+		alarm : MemberHeartbeatGapAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"					   
+	    
+	    not (NodeFailedAlarm(resourceName == $resourceName) 
+	                               from entry-point "MONITORING")
+	                               
+	    not (ManagerStoppedAlarm(resourceName == $resourceName)
+	    						   from entry-point "MONITORING")
+								 
+		eval(!cluster.clusterGetMemberName().equals($resourceName))								   										
+	then
+		logger.info("CONSEQUENCE");
+		consequences.investigateNodeLiveness(alarm, $resourceName);
+end	
+
+rule "0525: INVESTIGATE MY LIVENESS"
+salience 525
+	when
+		alarm : MemberHeartbeatGapAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+		
+		eval(!cluster.clusterGetMemberName().equals($resourceName))				 					   										
+	then
+		logger.info("CONSEQUENCE");
+		consequences.investigateMyLiveness(alarm, $resourceName);
+end
+
+rule "0530: INVESTIGATE MEMBERSHIP VALIDITY"
+salience 530
+	when
+		alarm : MembershipInvalidAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+		
+		eval(!cluster.clusterGetMemberName().equals($resourceName))				 								   										
+	then
+	    logger.info("CONSEQUENCE");
+		consequences.investigateClusterMembership(alarm);
+end
+
+
+rule "0550: INVESTIGATE: TIME KEEPER FOR HEARBEAT GAP ALARM"
+duration(10s)
+no-loop
+salience 550
+  when
+    alarm : MemberHeartbeatGapAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+  then
+   	alarm.increment();
+  	logger.info("TIMER EXPIRED, INCREMENTED ALARM: " + alarm);
+    consequences.updateFact(alarm);
+end
+
+rule "0550: INVESTIGATE: TIME KEEPER FOR INVALID MEMBERSHIP ALARM"
+duration(10s)
+no-loop
+salience 550
+  when
+    alarm : MembershipInvalidAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+  then
+    alarm.increment();
+    logger.info("TIMER EXPIRED, INCREMENTED ALARM: " + alarm);
+    consequences.updateFact(alarm);
+end
+
+rule "0550: INVESTIGATE: TIME KEEPER FOR MANAGER STOPPED ALARM"
+duration(10s)
+no-loop
+salience 550
+  when
+    alarm : ManagerStoppedAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+  then
+    alarm.increment();
+    logger.info("TIMER EXPIRED, INCREMENTED ALARM: " + alarm);
+    consequences.updateFact(alarm);
+end
+
+rule "0550: INVESTIGATE: TIME KEEPER FOR DATASERVER STOPPED ALARM"
+duration(10s)
+no-loop
+salience 550
+  when
+    alarm : DataServerStoppedAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+								   	
+	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+  then
+     alarm.increment();
+    logger.info("TIMER EXPIRED, INCREMENTED ALARM: " + alarm);
+    consequences.updateFact(alarm);
+end
+
+rule "0551: INVESTIGATE: TIME KEEPER FOR REMOTE SERVICE STOPPED ALARM"
+duration(10s)
+no-loop
+salience 551
+  when
+    alarm : RemoteDataServiceUnreachableAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+								   	
+	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+  then
+  	logger.info("CONSEQUENCE");
+    consequences.investigateRemoteServiceLiveness(alarm);
+end
+
+/*
+** FAULT DETECTOR RULES
+*/
+rule "0600: DETECT MEMBER HEARTBEAT GAP"
+duration(15s)
+salience 600
+	when
+		lastNotification : ClusterMemberHeartbeat($resourceName : resourceName) 
+									from entry-point "MONITORING"
+									
+		not (ClusterMemberHeartbeat(resourceName == $resourceName, this after [30s] lastNotification) 
+									from entry-point "MONITORING")
+		
+		not (MemberHeartbeatGapAlarm(resourceName == $resourceName)
+								   from entry-point "MONITORING")
+		
+		not (ManagerStoppedAlarm(resourceName == $resourceName)
+								   from entry-point "MONITORING")
+	 								
+	 	not (MembershipInvalidAlarm(resourceName == $resourceName)
+									from entry-point "MONITORING")
+	then
+		logger.info("CONSEQUENCE");
+		consequences.detectMemberHeartbeatGap(lastNotification,  $resourceName);
+end
+
+rule "0601: DETECT STOPPED CLUSTER MANAGER"
+salience 601
+	when
+		gapAlarm : MemberHeartbeatGapAlarm($resourceName : resourceName)
+								   from entry-point "MONITORING"
+								   
+		not(ManagerStoppedAlarm(resourceName == $resourceName)
+								   from entry-point "MONITORING")
+									
+		not(MembershipInvalidAlarm(resourceName == $resourceName)
+								   from entry-point "MONITORING")
+								   						   
+		not(DataSource(name == $resourceName,
+	 								state == ResourceState.SHUNNED ||
+	 								state == ResourceState.FAILED)
+	 								from entry-point "MONITORING") 
+									
+	then	
+	    logger.info("CONSEQUENCE");
+		consequences.detectClusterManagerStopped(gapAlarm,
+            									ResourceType.MANAGER, $resourceName,
+            									ResourceState.STOPPED);
+end	
+
+rule "0602: DETECT STOPPED DATASERVER"
+salience 602
+	when
+	
+		currentNotification : DataServerNotification(
+									$dataServiceName : clusterName,
+									$serverName : resourceName,
+									(resourceState == ResourceState.STOPPED ||
+									 resourceState == ResourceState.SUSPECT))
+										from entry-point "MONITORING"
+
+		dataSource : DataSource(name == $serverName,
+								state != ResourceState.FAILED && 
+		                        state != ResourceState.SHUNNED,
+		                  		alertStatus != DataSourceAlertStatus.CRITICAL,
+								$role : role) from entry-point "MONITORING"
+			
+	   	not (DataServerStoppedAlarm(resourceName == $serverName)
+								   from entry-point "MONITORING")						  								  
+								
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)		
+														
+	then
+	    logger.info("CONSEQUENCE");
+		consequences.raiseDataServerStoppedAlarm($dataServiceName, $serverName);
+end
+
+rule "0604: DETECT UNREACHABLE REMOTE SERVICE"
+salience 604
+	when 
+		notification : RemoteDataServiceHeartbeatNotification(resourceState == ResourceState.UNREACHABLE,
+		                              $remoteManagerName : memberName,
+		                              $dataServiceName : resourceName)
+						from entry-point "MONITORING"
+		
+		dataSource : DataSource(name == $dataServiceName,
+								state != ResourceState.FAILED && 
+		                        state != ResourceState.SHUNNED,
+		                  		alertStatus != DataSourceAlertStatus.CRITICAL,
+								$role : role) from entry-point "MONITORING"
+								
+		not (RemoteDataServiceUnreachableAlarm(resourceName == $dataServiceName)
+		                from entry-point "MONITORING")
+						
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)											
+	then
+	    logger.info("CONSEQUENCE");
+		consequences.raiseRemoteDataServiceUnreachableAlarm(notification);
+end
+
+rule "0605: DETECT MISSING MEMBERS"
+salience 605
+duration(30s)
+	when 
+	    eval(false)
+		configuration : EnterpriseRulesConfiguration(initialized == true) 
+							from entry-point "MONITORING"
+		eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)
+		eval(consequences.checkForMissingMembers())
+    then
+		// Need to update the configuration so it will cause this rule to trigger.
+		update(configuration);
+end
+
+	
+rule "1000: INITIALIZATION: INITIALIZE MASTER VIP"
+salience 1000
+when
+   ds : DataSource(role == "master", 
+   				   state == ResourceState.ONLINE,
+   				   vipIsBound == false, 
+   				   $dsName : name) from entry-point "MONITORING"
+   				   
+   not (ManagerStoppedAlarm(resourceName == $dsName)
+	                       from entry-point "MONITORING")
+   				   
+   eval(cluster.clusterGetMemberName().equals($dsName))
+   eval(cluster.clusterVIPIsEnabled())
+   eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE) 
+then
+	logger.info("CONSEQUENCE");
+ 	consequences.initializeMasterVIP(ds, $dsName);
+end
+
+
+rule "1100: DATASOURCE MAINTENANCE: RETRACT STALE DATASOURCE"
+salience 1100
+	when
+		lastDataSource : DataSource($dsName : name) from entry-point "MONITORING"
+		
+		currentDataSource : DataSource(name == $dsName,
+									   this after lastDataSource) from entry-point "MONITORING"
+	then
+		consequences.retractFact(lastDataSource);
+end
+
+rule "1110: MONITORING: UPDATE CURRENT RESOURCE STATE"
+salience 1110
+	when
+		notification :  ClusterResourceNotification(
+									$resourceType : resourceType,
+									$resourceName : resourceName,
+									$resourceState : resourceState) 
+									from entry-point "MONITORING"
+	   
+	then	
+		consequences.updateResourceStates(notification);
+end
+
+rule "1110: MONITORING: UPDATE ALARMS STATE"
+salience 1110
+	when
+		alarm :  ClusterAlarm() from entry-point "MONITORING"
+	   
+	then	
+	 	consequences.updateAlarms(alarm);
+end
+
+
+rule "2000: DISABLE DETECTION: CONSUME ALL NOTIFICATIONS IN MAINTENANCE MODE"
+salience 2000
+	when
+	    eval(false)
+		notification : ClusterResourceNotification() from entry-point "MONITORING"
+		eval(policyMgr.getMode() == ClusterPolicyManagerMode.MAINTENANCE)
+	then
+	 	consequences.retractFact(notification);
+end
+
+
+rule "2025: REPORT DATASOURCE STATE TRANSITIONS"
+salience 2025
+	when
+		lastDataSource : DataSource($dsName : name,
+									$lastRole : role,
+									$lastState : state) from entry-point "MONITORING"
+		
+		currentDataSource : DataSource(name == $dsName,
+									   $currentRole : role,
+									   $currentState : state,
+									   (role != $lastRole || state != $lastState),
+									   this after lastDataSource) from entry-point "MONITORING"
+	then	
+		Object[] params = {$dsName, $lastRole.toUpperCase(), $lastState, $currentRole.toUpperCase(), $currentState}; 
+	 	String message = String.format("DATASOURCE '%s' TRANSITION %s:%s => %s:%s", params);
+	 	logger.info(message);
+end
+
+
+rule "2025: REPORT COMPONENT STATE TRANSITIONS"
+salience 2025
+	when
+		previousNotification :  ClusterResourceNotification(
+									$resourceType : resourceType,
+									$resourceName : resourceName,
+									$lastResourceState : resourceState,
+									$clusterName : clusterName) 
+									from entry-point "MONITORING"
+									
+		currentNotification :  ClusterResourceNotification(
+									resourceType == $resourceType,
+									resourceName == $resourceName,
+									$newResourceState : resourceState,
+									resourceState != $lastResourceState,
+									this after previousNotification)
+									from entry-point "MONITORING" 
+	   
+	then	
+		Object[] params = {$resourceType, $resourceName, $lastResourceState, $newResourceState};
+	 	String message = String.format("%s '%s' STATE TRANSITION %s => %s", params);
+	 	logger.info(message);
+	 	
+end
+
+rule "2050: DATASOURCE MAINTENANCE: UPDATE PERSISTENT DATASOURCE PROPERTIES"
+salience 2050
+	when
+		currentNotification : ReplicatorNotification(
+									$replicatorName : resourceName, 
+									$replProps : resourceProps,
+									resourceState == ResourceState.ONLINE)
+								    from entry-point "MONITORING"
+								    
+		dataSource : DataSource(name == $replicatorName,
+		                        $dataServiceName : dataServiceName) from entry-point "MONITORING"
+	    eval(cluster.isCoordinator())
+		changedDsProps : TungstenProperties() from 
+			cluster.getPersistentChanges(dataSource.toProperties(), $replProps)
+			
+	then
+	    Object[] params = {$replicatorName};
+		logger.info(String.format("COORDINATOR: Updating persistent properties for DataSource '%s'", params));
+		try
+		{
+			cluster.dataSourceUpdate($dataServiceName, changedDsProps);
+	    }
+	    catch(Exception e)
+	    {
+	    	Object[] errorParams = {dataSource.getName(), e};
+	    	logger.error(String.format("COORDINATOR: UNABLE TO UPDATE PERSISTENT PROPERTIES FOR DataSource %s, reason=%s",
+	    					errorParams)); 
+	    }
+end
+
+
+rule "3000: DATASOURCE MAINTENANCE: CREATE NEW DATASOURCES"
+salience 3000
+	when
+		
+		currentNotification : ReplicatorNotification(
+									$replicatorName : resourceName, 
+									$resourceProps : resourceProps,
+									(resourceState == ResourceState.ONLINE ||
+									 resourceState == ResourceState.SYNCHRONIZING))
+								    from entry-point "MONITORING"
+								    
+		dataserverNotification : DataServerNotification(
+									resourceName == $replicatorName,
+									(resourceState == ResourceState.ONLINE ||
+									 resourceState == ResourceState.SYNCHRONIZING))
+									from entry-point "MONITORING"
+								   						   
+		not (exists (DataSource(name == $replicatorName) from entry-point "MONITORING"))
+		eval(cluster.isCoordinator())
+	then
+		logger.info("CONSEQUENCE");
+		consequences.createNewDataSources($replicatorName, $resourceProps);
+		
+end
+
+
+rule "3500: DATASOURCE MAINTENANCE: REFRESH DATASOURCES"
+salience 3500
+	when 
+		ManagerHeartbeat() from entry-point "MONITORING"
+	then
+	   	consequences.refreshDataSources();
+end
+
+
+
+
+
+
+					 
+
+
+
+
+	                                

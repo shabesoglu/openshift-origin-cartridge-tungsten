@@ -1,0 +1,14 @@
+-----------------------
+Command: cluster online
+-----------------------
+Description: Bring all cluster services to online state
+Syntax: 
+  cluster online
+ 
+The 'cluster online' command brings all data services that are not
+online into the online state.  It has no effect on services that
+are already online.
+
+Usage: 
+
+  cluster online 

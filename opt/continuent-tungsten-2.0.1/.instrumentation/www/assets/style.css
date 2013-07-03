@@ -1,0 +1,8 @@
+.plot { width: 600px; height: 400px; }
+.status { width: 200px; padding: 5px; }
+
+.ONLINE  { background-color: #00FF00 } 
+.OFFLINE { background-color: #FF0000 } 
+.SUSPECT { background-color: #AA0000 } 
+.SHUNNED { background-color: #AA0000 } 
+.SYNCHRONIZING { background-color: #000000; color: #FFFFFF; } 

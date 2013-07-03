@@ -1,0 +1,24 @@
+-------------------
+Command: set output
+-------------------
+Description: Set the cctrl output level
+Syntax: 
+  set output <level>
+ 
+The following output levels are supported. 
+
+debug    - Provide verbose messages to help with cctrl debugging
+detailed - Show detailed messages during management operations
+normal   - Show messages only for important state transitions
+off      - Turn off output logging
+summary  - Show summary messages only
+
+The default output level is 'normal'. 
+
+Usage: 
+
+Set logging to detailed to see all messages during a switch operation to 
+node mercury. 
+
+  set output detailed
+  switch to mercury

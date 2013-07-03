@@ -1,0 +1,103 @@
+--------------------------------------------------------------------------------
+0. Prerequisites
+
+   Install Apache, or other web container (the only requirement is Javascript support)
+
+   $ sudo apt-get install -y apache2
+
+   Verify this works
+   
+   Point browser to http://<hostname>[:port]
+
+1. Configure Tungsten Cluster to collect Manager monitoring
+
+   $ cd ${CONTINUENT_ROOT}/tungsten/tungsten-manager
+   $ cp rules-ext/Instrumentation.drl rules
+   $ mkdir $CONTINUENT_ROOT/monitoring
+   $ manager restart
+
+   Verify output is being produced
+  
+   $ tail ${CONTINUENT_ROOT}/monitoring/`hostname`/tungsten/*/replicator/current
+
+2. Start Load  
+  
+   Change default config to help in output processing (adding separator option)
+
+   $ sed -i.bak 's/separator=" "/separator=","/' ${CONTINUENT_ROOT}/tungsten/bristlecone/config/evaluator/sample.readwrite.xml
+
+   $ ${CONTINUENT_ROOT}/tungsten/cluster-home/bin/evaluator_readwrite
+
+3. Start monitoring capture (Note: this is a temporary POC script)
+
+  $ cd ${CONTINUENT_ROOT}/tungsten/.instrumentation
+  $ bin/poc_capture <service>
+
+4. Start publishing
+
+  $ cd ${CONTINUENT_ROOT}/tungsten/.instrumentation
+  $ bin/publish -d <service>
+
+5. View the data
+
+  # Using Apache2 on Ubuntu, one off config step
+  $ sudo mv /var/www /tmp
+  $ sudo ln -s ${CONTINUENT_ROOT}/instrumentation/www /var/www
+
+  Checkout http://<hostname>/<service>
+
+--------------------------------------------------------------------------------
+
+
+TODO
+----
+ 
+* Current MySQL instrumentation is every 5 seconds, so that is a potential performance hit.
+* There is no automated/scheduled archival in place. The following cleanups up source monitoring files
+
+$  bin/archive
+
+* User friendly graphing label. currently it is <host>_<metric>
+
+
+Advanced Features
+-----------------
+
+Publishing is controlled by conf/publish.conf
+You can plot your own graphs with any metrics collected, and call publish with:
+ 
+  $ bin/publish -c <your-config> -d <service>
+
+Optionally you can specify a sub-directory, enabling you to publish different things:
+
+  $ bin/publish -c <your-config> -d <service> -s <dir>
+
+This will publish data to http://<hostname/<service>/<dir>
+ 
+This allows you to thread the publish process.
+
+Now the fun begins, you can do the following
+
+You can create new Flot templates (for any graph that Flot creates), and place them in 
+   conf/publish.<tmpl>.conf, and reference appropriately in your conf file
+
+You can change the style of your graphs by adding specifics in style.css of the directory 
+you define. (e.g. resize the plots)
+
+You can add additional information to the index.htm, and just hit refresh
+
+The big reset is done with:
+
+$ rm -rf ${CONTINUENT_ROOT}/(monitoring|instrumentation)/*
+
+You can do this in a running environment, you just need to restart the publish process as 
+that recreates directories.
+
+
+Bristlecone Instrumentation
+
+
+
+Workarounds 
+-----------
+

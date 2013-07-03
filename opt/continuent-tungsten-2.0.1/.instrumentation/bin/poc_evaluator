@@ -1,0 +1,41 @@
+#/bin/sh
+HOSTNAME=`hostname -s`
+DT=`date +%Y%m%d.%H%M%S.%s`
+
+
+process_log() {
+  local LOG_FILE=$1
+  while [ : ] 
+  do
+    `dirname $0`/parse -v ${LOG_FILE}
+    sleep 3
+  done
+
+  return 0
+}
+
+start() {
+  LOG_FILE="$CONTINUENT_ROOT/monitoring/${HOSTNAME}/evaluator/${SERVICE}/status/${DT}.txt"
+  echo "Generating output in ${LOG_FILE}"
+  mkdir -p `dirname ${LOG_FILE}`
+  ${CONTINUENT_ROOT}/tungsten/cluster-home/bin/evaluator_readwrite > ${LOG_FILE} &
+  #${CONTINUENT_ROOT}/tungsten/bristlecone/bin/evaluator_tungsten.sh ~/conf/read-scaling.xml > ${LOG_FILE} &
+  echo "PID=$!"
+  SLEEP=15
+  echo "Giving evaluator $SLEEP seconds to start"
+  sleep ${SLEEP}
+  process_log ${LOG_FILE}
+}
+
+
+SERVICE=$1
+[ -z "${SERVICE}" ] && echo "ERROR: $0 <service>" && exit 1
+
+if [ $# -eq 2 ]
+then
+  process_log $2
+else
+  start 
+fi
+
+exit 0

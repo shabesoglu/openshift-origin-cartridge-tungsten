@@ -1,0 +1,102 @@
+package com.continuent.tungsten.cluster.manager.policy;
+ 
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.HashMap;
+import com.continuent.tungsten.common.cluster.resource.*;
+import com.continuent.tungsten.common.utils.StatisticsMap;
+import com.continuent.tungsten.common.config.TungstenProperties;
+import com.continuent.tungsten.manager.resource.logical.proxy.*;
+import com.continuent.tungsten.common.cluster.resource.notification.*;
+import com.continuent.tungsten.cluster.manager.ClusterManagementHelper;
+import com.continuent.tungsten.manager.cluster.policy.ClusterPolicyManagerMode;
+import com.continuent.tungsten.cluster.manager.policy.EnterprisePolicyManager;
+import com.continuent.tungsten.manager.exception.ClusterManagerException;
+import com.continuent.tungsten.cluster.manager.rules.configuration.*;
+import com.continuent.tungsten.cluster.manager.alarm.ManagerStoppedAlarm;
+import com.continuent.tungsten.cluster.manager.alarm.ClusterAlarm;
+import com.continuent.tungsten.cluster.manager.event.*;
+import com.continuent.tungsten.cluster.manager.alarm.*;
+import org.drools.runtime.rule.*;
+import org.apache.log4j.Logger;
+
+global ClusterManagementHelper cluster;
+global Logger logger;
+global EnterprisePolicyManager policyMgr;
+global ClusterPolicyManagerMode mode; 
+
+declare ClusterResourceNotification
+	@role(event)
+end
+
+declare ReplicatorNotification
+	@role(event)
+end
+
+declare DataServerNotification
+	@role(event)
+end
+
+declare DataSourceNotification
+	@role(event)
+end
+
+declare ManagerNotification
+	@role(event)
+end
+
+declare ManagerHeartbeat
+	@role(event)
+end
+
+declare DataSource
+	@role(event)
+end
+
+declare EnterpriseRulesConfiguration
+	@role(event)
+end
+
+declare ManagerFailedAlarm
+	@role(event)
+end	
+
+
+rule "DEFAULT EVENT HANDLER"
+salience 200
+	when
+		event : ClusterMonitoringEvent()
+		eval(cluster.isCoordinator())
+	then
+		Object[] params = {event.getMessage()};
+		logger.info(String.format("COORDINATOR: HANDLING EVENT %s", params));
+		 
+		try
+		{
+			cluster.handleEvent(event);
+		}
+		catch(ClusterManagerException e)
+		{
+			
+			logger.error(String.format("Error encountered when handling event %s", params), e);
+		}
+end
+
+
+rule "LOG EVENTS"
+salience 100
+	when
+		event : ClusterMonitoringEvent()
+	then
+		logger.info(event);
+end
+
+rule "RETRACT EVENTS"
+salience 0	
+	when 
+		event : ClusterMonitoringEvent()
+	then
+		retract(event);
+end
+

@@ -1,0 +1,12 @@
+# Database Handler Definition
+#
+# A Handler that will run various administration tasks on a databse
+#
+handler=com.continuent.tungsten.manager.handler.DatabaseHandler
+
+# Platform specific DB start/stop commands (define if default do not work on
+# your platform)
+#handler.mysql.start=sudo /sbin/service mysqld start 
+#handler.mysql.stop=sudo /sbin/service mysqld stop
+#handler.mysql.start=sudo /etc/init.d/mysql start
+#handler.mysql.stop=sudo /etc/init.d/mysql stop
