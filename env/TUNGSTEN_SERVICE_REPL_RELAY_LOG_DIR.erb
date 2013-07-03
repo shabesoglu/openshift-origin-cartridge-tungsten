@@ -1,0 +1,12 @@
+###########################################################################
+#  Continuent Tungsten Environment variable definition for OpenShift
+#
+#  TUNGSTEN_SERVICE_REPL_RELAY_LOG_DIR.erb
+#
+#
+#  This environment variable is used to set the following Tungsten properties:
+#
+#  replicator.extractor.dbms.relayLogDir
+#
+###########################################################################
+<%= ENV['OPENSHIFT_DATA_DIR'] %>/relay/<%= ENV['OPENSHIFT_APP_NAME'] %>

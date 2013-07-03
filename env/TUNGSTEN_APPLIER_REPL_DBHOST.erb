@@ -1,0 +1,12 @@
+###########################################################################
+#  Continuent Tungsten Environment variable definition for OpenShift
+#
+#  TUNGSTEN_APPLIER_REPL_DBHOST.erb
+#
+#
+#  This environment variable is used to set the following Tungsten properties:
+#
+#  replicator.global.db.host
+#
+###########################################################################
+<%= ENV['OPENSHIFT_MYSQL_DB_HOST'] %>
