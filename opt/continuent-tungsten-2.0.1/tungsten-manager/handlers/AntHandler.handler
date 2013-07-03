@@ -1,5 +1,0 @@
-# Ant Handler Definition
-#
-# A Handler that will run the "ant" command
-#
-handler=com.continuent.tungsten.manager.handler.AntHandler

@@ -1,5 +1,0 @@
-# Ant Handler Definition
-#
-# A Handler that will execute methods on MBeans
-#
-handler=com.continuent.tungsten.manager.handler.ClusterManagementHandler

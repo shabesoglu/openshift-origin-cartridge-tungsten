@@ -1,4 +1,0 @@
-#
-# A Handler that will execute an arbitrary OS command
-#
-handler=com.continuent.tungsten.manager.handler.LSBService
