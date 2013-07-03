@@ -1,0 +1,15 @@
+###########################################################################
+#  Continuent Tungsten Environment variable definition for OpenShift
+#
+#  TUNGSTEN_DATASERVICENAME.erb
+#
+#
+#  This environment variable is used to set the following Tungsten properties:
+#
+#  cluster.name
+#  clusterName
+#  manager.gc.group
+#  notifier.gcnotifier.channelName
+#
+###########################################################################
+<%= ENV['OPENSHIFT_APP_NAME'] %>

@@ -1,0 +1,23 @@
+-------------
+Command: ping
+-------------
+Description: Test whether a host is alive
+Syntax: 
+  ping [host]
+ 
+The 'ping' command checks to see whether a host is alive.  If the 
+host name is omitted, it tests all hosts in the cluster including 
+witness hosts.  
+
+Ping uses the host ping timeout and methods specified in the
+manager.properties file.  By default output is parsimonious.  
+
+Usage: 
+
+Ping host venus to see if it is alive.
+
+  ping venus
+
+Ping all cluster hosts plus the witness hosts. 
+
+  ping

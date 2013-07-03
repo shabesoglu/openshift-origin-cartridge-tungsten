@@ -1,0 +1,88 @@
+                  IMPLEMENTING MASTER FLOATING IP SUPPORT
+                              9 January 2009
+
+Here are basic instructions for implementing master floating IP
+support in Tungsten.  We do this by adding a couple of extra rules
+to each manager that run a specialized procedure whenever the master
+goes on or offline.  This allows you to grab a virtual IP address
+whenever a master data source goes online and drop it when the data
+source goes offline.
+
+The following instructions assume the VIP is 10.10.12.22.  This
+procedure will work with any address provided the address is on the
+same subnet as all hosts that may be promoted to master.
+
+Follow the steps shown below:  
+
+1.) Ensure that your database server is listening on all IP addresses.  If
+the server listens on a single address, it will not be able to accept
+connections on the VIP.  Restart your database service if any changes are
+required.
+
+For MySQL add the following line to your my.cnf file.
+
+bind_address=0.0.0.0
+
+For PostgreSQL add the following line to your postgresql.conf file
+
+listen_addresses='*'
+
+2.) Create file
+cluster-home/conf/cluster/<clustername>/service/master.properties
+with the following properties:
+
+# master.properties
+name=master
+command.start=sudo /sbin/ifconfig eth0:0 10.10.12.22
+command.stop=sudo /sbin/ifconfig eth0:0 down
+command.restart=echo "Not supported"
+command.status=sudo /sbin/ifconfig eth0:0
+
+This file maps the service start command to grabbing virtual IP
+address 10.10.12.22 on interface eth0:0.  The stop command drops
+it.  Note that your login must support running /sbin/ifconfig using
+sudo, which means that you may have to edit the sudoers file to 
+set up the proper permissions for non-root accounts.  The following
+example shows how to do this for the 'tungsten' account on host 
+centos5a.  (Substitute login and host names accordingly for your site.) 
+
+  a. Execute 'visudo' as root.  This brings up the /etc/sudoers file. 
+
+  b. Add the following lines to the end of the sudoers file: 
+
+     ## Allow 'tungsten' to run /sbin/ifconfig without a password. 
+     tungsten centos5a=NOPASSWD: /sbin/ifconfig
+
+  c. Save changes and exit.  
+
+3.) Next copy the rules file FloatingIP.drl to the
+tungsten-cluster-manager/rules directory and restart the manager.
+The rules cause the coordinator to invoke the foregoing start and
+stop commands when the master data source goes on- or offline.
+
+4.) Once the manager restarts, login with cctrl.  You can now pick
+up the IP address just by turning the master data source one and
+offline.  To confirm, you can login to the DBMS using the virtual
+IP address or run /sbin/ifconfig.
+
+[LOGICAL] /cluster/demo/> datasource centos5a online 
+DataSource 'centos5a' is now ONLINE
+[LOGICAL] /cluster/demo/> datasource centos5a offline
+DataSource 'centos5a' is now OFFLINE
+
+5.) You can confirm easily that the VIP is available using the 'ifconfig' 
+command, which shows all configured network interface.  For example, here
+is ifconfig output when the VIP is assigned: 
+
+$ /sbin/ifconfig eth0:0
+eth0:0    Link encap:Ethernet  HWaddr 00:0C:29:96:91:55  
+          inet addr:10.10.12.22  Bcast:10.255.255.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          Base address:0x2000 Memory:d8920000-d8940000 
+
+Here is the output then the VIP is unassigned. 
+
+$ /sbin/ifconfig eth0:0
+eth0:0    Link encap:Ethernet  HWaddr 00:0C:29:96:91:55  
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          Base address:0x2000 Memory:d8920000-d8940000 

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bonecp-config>
+    <default-config>
+        <!-- Sets the minimum number of connections that will be contained in 
+             every partition. -->
+        <property name="minConnectionsPerPartition">0</property>
+
+        <!-- Sets the maximum number of connections that will be contained in
+             every partition.
+             Setting this to 5 with 3 partitions means you will have 15 unique 
+             connections to the database. Note that the connection pool will not
+             create all these connections in one go but rather start off with 
+             minConnectionsPerPartition and gradually increase connections as
+             required. -->
+        <property name="maxConnectionsPerPartition">10</property>
+
+        <!-- Sets the acquireIncrement property.  When the available connections
+             are about to run out, BoneCP will dynamically create new ones in 
+             batches. This property controls how many new connections to create 
+             in one go (up to a maximum of maxConnectionsPerPartition).
+             Note: This is a per partition setting. -->
+        <property name="acquireIncrement">2</property>
+
+        <!-- Sets number of partitions to use.  In order to reduce lock 
+             contention and thus improve performance, each incoming connection 
+             request picks off a connection from a pool that has 
+             thread-affinity, i.e. pool[threadId % partition_count]. 
+             The higher this number, the better your performance will be for the 
+             case when you have plenty of short-lived threads. Beyond a certain 
+             threshold, maintenance of these pools will start to have a negative 
+             effect on performance (and only for the case when connections on a 
+             partition start running out).  Default: 1, minimum: 1, recommended:
+             2-4 (but very app specific) -->
+        <property name="partitionCount">5</property>
+    </default-config>
+</bonecp-config>

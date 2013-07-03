@@ -1,0 +1,10 @@
+var options%%PLOT%% = { 
+    xaxis: { mode: "time", ticks: 6, timeformat: "%H:%M:%S", color: "#FFFFFF" },
+    yaxis: { color: "#FFFFFF" },
+    grid: { hoverable: true, clickable: true }, 
+    legend: { position: "sw", backgroundOpacity: 0  }
+  };
+$(function () {
+    $.plot($("#plot%%PLOT%%"),plot%%PLOT%%, options%%PLOT%%);
+});
+

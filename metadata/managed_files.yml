@@ -6,7 +6,5 @@ locked_files:
 - metadata/*
 - hooks/
 - hooks/*
-- opt/
-- opt/*
 processed_templates:
 - '**/*.erb'

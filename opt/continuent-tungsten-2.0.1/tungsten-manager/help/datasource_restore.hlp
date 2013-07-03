@@ -1,0 +1,34 @@
+---------------------------
+Command: datasource restore
+---------------------------
+Description: Restore a data source
+Syntax: 
+  datasource <host> restore [uri] [timeout]
+ 
+The 'datasource restore' command reloads a backup generated with the 
+'datasource backup' command.  The following command options are supported:
+
+* uri - The URI of a specific backup to restore
+* timeout - Number of seconds to wait before the command times out.
+
+To restore a data source you must first put the data source and its
+associated replicator offline.  
+
+Usage:
+
+The following example restores host saturn from the latest backup.
+The preceding commands place the datasource and replicator offline.
+The commands after the restore return the datasource to the cluster
+and put it online.
+
+  datasource saturn shun
+  datasource saturn offline
+  replicator saturn offline
+  datasource saturn restore 
+  datasource saturn welcome
+  cluster online
+
+The following example restores host mercury from an existing backup, which 
+is explicitly named.  The datasource and replicator must be offline. 
+
+  datasource mercury restore storage://file-system/store-0000000004.properties

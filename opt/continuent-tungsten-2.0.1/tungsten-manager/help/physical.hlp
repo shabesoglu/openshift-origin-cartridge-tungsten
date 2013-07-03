@@ -1,0 +1,17 @@
+-----------------
+Command: physical
+-----------------
+Description: Enter cctrl physical mode 
+Syntax: 
+  physical
+ 
+The 'physical' command enables physical mode commands and displays.
+This is a specialized mode used to examine interfaces of resources
+managed by the cluster.  It is not recommended for normal administrative
+use.
+
+Usage: 
+
+Enter physical mode.
+
+   physical

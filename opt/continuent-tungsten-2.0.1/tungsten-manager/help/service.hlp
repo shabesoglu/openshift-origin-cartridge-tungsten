@@ -1,0 +1,50 @@
+----------------
+Command: service
+----------------
+Description: Execute a service command
+Syntax: 
+  service {host|*}/<name> <command>
+ 
+The 'service' command executes a command on the operating system
+according to standard Linux/Unix service script conventions.  The
+service command may apply to a single host or may be executed on
+all hosts using the * operator.  This latter form is also known as
+a broadcast command.  You can enter service commands from any
+manager.
+
+Commonly defined services include the following.  User-defined
+services may also be invoked using the service command provided
+they are listed in the service configuration files for the cluster. 
+
+* connector  - Tungsten Connector service
+* mysql      - MySQL service
+* postgresql - PostgreSQL service
+* replicator - Tungsten Replicator service
+
+The standard service commands are: 
+
+* restart - Stop and then start the service
+* start   - Start the service if it is not already running
+* status  - Show the current process status
+* stop    - Stop the service if it is running
+* tail    - Show the end of the process log (useful for diagnostics)
+
+Usage: 
+
+Start all mysqld processes in the cluster.  This should be done in.
+maintenance mode to avoid triggering a failover.
+
+  service */mysql restart
+
+Stop the replicator process on host mercury.  
+
+  service mercury/replicator tail
+
+Show the end of the log belonging to the connector process on host 
+jupiter. 
+
+  service jupiter/connector tail
+
+Warning:  [Re-]starting master DBMS servers can cause failover when
+operating in automatic policy mode.  Always set policy mode to
+maintenance before restarting a master DBMS server.

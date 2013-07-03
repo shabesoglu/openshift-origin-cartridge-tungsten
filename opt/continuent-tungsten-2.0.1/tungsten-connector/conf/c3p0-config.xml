@@ -1,0 +1,16 @@
+<!--
+  Sample c3p0 connection pool configuration file for tungsten connector
+  These are c3p0 defaults that can be overloaded to match you needs
+  Visit http://www.mchange.com/projects/c3p0/index.html#configuration
+  for a complete description of configuration possibilities
+-->
+<c3p0-config>
+    <default-config>
+        <property name="minPoolSize">3</property>
+        <property name="maxPoolSize">15</property>
+        <property name="numHelperThreads">3</property>
+        <property name="maxConnectionAge">3600</property>
+        <property name="testConnectionOnCheckin">true</property>
+    </default-config>
+</c3p0-config>
+

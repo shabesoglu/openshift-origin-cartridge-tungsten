@@ -1,0 +1,16 @@
+--------------
+Command: admin
+--------------
+Description: Enter cctrl admin mode 
+Syntax: 
+  admin
+ 
+The 'admin' command enables admin mode commands and displays.  Admin
+mode is a specialized mode used to examine and repair cluster metadata. 
+It is not recommended for normal use. 
+
+Usage: 
+
+Enter admin mode.
+
+   admin

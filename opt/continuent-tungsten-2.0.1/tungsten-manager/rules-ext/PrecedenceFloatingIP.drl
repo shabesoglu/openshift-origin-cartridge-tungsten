@@ -1,0 +1,176 @@
+/*
+** These rules provide a means to keep a VIP bound to the host for
+** the datasource with the highest precedence.
+**
+**  Author: Edward Archibald
+*/
+
+package com.continuent.tungsten.cluster.manager.policy;
+ 
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Date;
+import com.continuent.tungsten.common.cluster.resource.*;
+import com.continuent.tungsten.common.utils.StatisticsMap;
+import com.continuent.tungsten.cluster.manager.ClusterManagementHelper;
+import com.continuent.tungsten.manager.cluster.policy.ClusterPolicyManagerMode;
+import com.continuent.tungsten.cluster.manager.policy.EnterprisePolicyManager;
+import com.continuent.tungsten.manager.exception.ClusterManagerException;
+import com.continuent.tungsten.common.cluster.resource.notification.*;
+import com.continuent.tungsten.cluster.manager.alarm.ManagerStoppedAlarm;
+import com.continuent.tungsten.common.patterns.order.*;
+import org.drools.runtime.rule.*;
+import org.apache.log4j.Logger;
+
+global ClusterManagementHelper cluster;
+global Logger logger;
+global EnterprisePolicyManager policyMgr;
+global ClusterPolicyManagerMode mode; 
+global Map resourceStates;
+
+declare ManagerNotification
+	@role(event)
+end
+
+declare ManagerHeartbeat
+	@role(event)
+end
+
+declare HostWithVIP
+    name : String
+    timeGrabbed : java.util.Date
+end
+
+declare DataSource
+	@role(event)
+end
+
+declare ManagerFailedAlarm
+	@role(event)
+end
+
+rule "INITIALIZE VIP SWITCHING LOGIC"
+no-loop
+salience 100
+when 
+    ManagerHeartbeat() from entry-point "MONITORING"
+	not (exists HostWithVIP())
+	eval(cluster.isCoordinator())
+then
+	logger.info("INITIALIZING VIP SWITCHING LOGIC");
+	HostWithVIP hostWithVIP = new HostWithVIP();
+	hostWithVIP.setName("UNDEFINED");
+	hostWithVIP.setTimeGrabbed(new Date());
+    logger.info("INITIALIZE VIP SWITCHING: STOP VIP ON ALL HOSTS");
+	cluster.clusterServiceCommand("*/vip", "stop");
+	logger.info("\n" + cluster.clusterServiceCommand("*/vip", "status") + "\n");
+	insert(hostWithVIP);
+end
+
+
+rule "START BY BINDING VIP TO ANY ONLINE DATASOURCE"
+no-loop
+salience 60
+	when
+		boundDataSource : DataSource($anyDSName : name,
+							    state == ResourceState.ONLINE,
+							    $anyPrecedence : precedence)
+		
+		hostWithVIP : HostWithVIP(name == "UNDEFINED")
+		not (ManagerFailedAlarm())
+	 	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+	 	eval(cluster.managerIsOnline($anyDSName));
+	 	eval(cluster.isCoordinator())
+									
+	then	
+		Object[] params = {$anyDSName, $anyPrecedence};		
+		logger.info("UNBINDING VIP FROM ALL HOSTS");
+		logger.info("\n" + cluster.clusterServiceCommand("*/vip", "stop") + "\n");
+	    logger.info(String.format("BINDING VIP TO MASTER '%s', PRECEDENCE=%d",
+	    	params));
+	
+	    cluster.clusterServiceCommand($anyDSName + "/vip", "start");
+	    hostWithVIP.setName($anyDSName);
+		hostWithVIP.setTimeGrabbed(new Date());
+	    logger.info("\n" + cluster.clusterServiceCommand("*/vip", "status") + "\n");
+	    update(hostWithVIP);
+end	
+
+/*
+rule "REPORT BOUND DATASOURCE"
+no-loop
+salience 50
+ when
+ 	HostWithVIP($hostName : name)
+ 	ManagerHeartbeat() from entry-point "MONITORING"
+ 	eval(cluster.isCoordinator())
+ then
+ 	logger.info("HOST WITH VIP=" + $hostName);
+end
+
+rule "REPORT ONLINE DATASOURCE PRECEDENCE"
+no-loop
+salience 50
+	when
+		ds : DataSource($name : name, $precedence : precedence,
+			            state == ResourceState.ONLINE)
+    then
+    	logger.info("DATASOURCE '" + $name + "', precedence=" + $precedence);
+end 
+*/
+
+rule "KEEP DATASOURCE WITH HIGHEST PRECEDENCE BOUND WITH VIP"
+no-loop
+salience 40
+	when
+		boundDataSource : DataSource($boundDSName : name,
+							    $boundDSPrecedence : precedence)
+		
+		hostWithVIP : HostWithVIP(name == $boundDSName)
+		
+		unboundDataSource : DataSource($higherPrecedenceDS : name,
+						      name != $boundDSName,
+						      state == ResourceState.ONLINE,
+						      $higherPrecedence : precedence,
+						      precedence < $boundDSPrecedence)
+		
+		not (ManagerFailedAlarm())
+		
+	 	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+	 	eval(cluster.isCoordinator())
+									
+	then	
+		Object[] params = {$boundDSName, $boundDSPrecedence, $higherPrecedenceDS, $higherPrecedence};
+		logger.info("UNBINDING VIP FROM ALL HOSTS");
+		cluster.clusterServiceCommand("*/vip", "stop");
+	    logger.info(String.format("MOVING VIP FROM DATASOURCE '%s', PRECEDENCE=%d to DATASOURCE '%s', PRECEDENCE=%d",
+	    	params));
+		hostWithVIP.setName($higherPrecedenceDS);
+		hostWithVIP.setTimeGrabbed(new Date());
+	    cluster.clusterServiceCommand($higherPrecedenceDS + "/vip", "start");
+	    logger.info("\n" + cluster.clusterServiceCommand("*/vip", "status") + "\n");
+	    update(hostWithVIP);
+end	
+
+rule "DETECT BOUND DATASOURCE FAILURE AND RE-INITIALIZE"
+no-loop
+salience 1000
+	when
+		dataSource : DataSource($failedDS : name,
+							    state != ResourceState.ONLINE)
+		
+	    hostWithVIP : HostWithVIP(name == $failedDS)
+	    
+	 	eval(policyMgr.getMode() != ClusterPolicyManagerMode.MAINTENANCE)	
+	 	eval(cluster.isCoordinator())
+									
+	then	
+		logger.info("UNBINDING VIP FROM ALL HOSTS");
+		cluster.clusterServiceCommand("*/vip", "stop");
+		logger.info("\n" + cluster.clusterServiceCommand("*/vip", "status") + "\n");
+		hostWithVIP.setName("UNDEFINED");
+		update(hostWithVIP);
+ 	    
+end	

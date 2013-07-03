@@ -1,0 +1,23 @@
+---------------------------
+Command: datasource welcome
+---------------------------
+Description:  Returns a shunned data source to cluster
+Syntax: 
+  datasource <host> welcome
+ 
+The 'datasource welcome' command returns a shunned data source to
+the cluster.  You must use this command or the 'datasource recover'
+command to welcome back a data source that has been manually shunned
+for maintenance or automatically shunned due to a failure.
+
+You can introduce problems if you run 'datasource welcome' on a failed master.
+If an ONLINE master already exists, run 'datasource recover' to return the 
+data source to the cluster as a slave. If no ONLINE master exists, you will 
+need to take special care to return the data source to the cluster.
+
+Usage:
+
+The following example welcomes a shunned data source back to the
+cluster.
+
+  datasource venus welcome

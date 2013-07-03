@@ -1,0 +1,8 @@
+# Loopback Handler Definition
+#
+# The loopback handler accepts any ActionEvent it receives and responds with 
+# a ResponseEvent containing the action string and arguments.  This handler
+# is used to test manager liveness.  The handler is available by default 
+# in every service manager but must be explicitly activated.  
+#
+handler=com.continuent.tungsten.manager.handler.LoopbackHandler

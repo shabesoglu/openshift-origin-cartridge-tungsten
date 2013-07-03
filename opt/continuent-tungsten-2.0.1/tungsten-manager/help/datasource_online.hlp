@@ -1,0 +1,16 @@
+--------------------------
+Command: datasource online
+--------------------------
+Description: Bring a single data source to online state
+Syntax: 
+  datasource <host> online
+ 
+The 'datasource online' brings the host's data source online and makes it 
+available to applications.  It has no effect if the data source is already 
+online. 
+
+Usage: 
+
+The following command brings data source mercury online. 
+
+  datasource mercury online 

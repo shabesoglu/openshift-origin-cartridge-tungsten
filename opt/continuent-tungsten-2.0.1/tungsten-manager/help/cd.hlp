@@ -1,0 +1,19 @@
+--------------
+Command: cd
+--------------
+Description: Change the current data service (SOR clusters)
+Syntax: 
+  cd <data service name> | ..
+ 
+The 'cd' command changes the data service being administered. Subsequent 
+commands will only affect the given data service name. 'cd ..' allows to go
+back to the root element.
+The given data service name can be either composite or physical
+Note that this command can only be used when cctrl is run with the '-multi'
+flag
+
+Usage: 
+
+The following example changes to the 'sj_nyc' composite data service.
+
+  cd sj_nyc
