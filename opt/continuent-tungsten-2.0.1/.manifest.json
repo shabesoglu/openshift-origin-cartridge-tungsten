@@ -1,5 +1,5 @@
 {
-  "date": "Tue  2 Jul 2013 09:53:25 BST",
+  "date": "Wed  3 Jul 2013 10:37:47 BST",
   "product": "Continuent Tungsten",
   "version":
   {
@@ -8,7 +8,7 @@
     "revision": 1
   },
   "userAccount": "narmitag",
-  "host": "Neils-MacBook-Pro-4.local",
+  "host": "unknown-40:6c:8f:3f:91:9b.home",
   "hudson":
   {
     "buildNumber": null,
@@ -23,22 +23,22 @@
     "connector":
     {
       "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/connector",
-      "revision": 8334
+      "revision": 8339
     },
     "fsm":
     {
       "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/fsm",
-      "revision": 8334
+      "revision": 8339
     },
     "manager":
     {
       "URL": "svn+ssh://svn.continuent.com/svnroot/tungsten/branches/tungsten-openshift-2.0.1/manager",
-      "revision": 8334
+      "revision": 8339
     },
     "replicator":
     {
       "URL": "https://tungsten-replicator.googlecode.com/svn/branches/tungsten-openshift-2.0.1",
-      "revision": 1466
+      "revision": 1468
     },
     "bristlecone":
     {

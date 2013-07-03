@@ -6,7 +6,7 @@ replicator.filter.bidiSlave=com.continuent.tungsten.replicator.filter.BidiRemote
 replicator.filter.bidiSlave.localServiceName=${local.service.name}
 
 # If true allow statements that may be unsafe for bi-directional replication. 
-replicator.filter.bidiSlave.allowBidiUnsafe=<%= ENV['OPENSHIFT_TUNGSTEN_REPL_SVC_ALLOW_BIDI_UNSAFE'] %>
+replicator.filter.bidiSlave.allowBidiUnsafe=<%= ENV['TUNGSTEN_REPL_SVC_ALLOW_BIDI_UNSAFE'] %>
 
 # If true allow updates from all other remote services, not just this one. 
-replicator.filter.bidiSlave.allowAnyRemoteService=<%= ENV['OPENSHIFT_TUNGSTEN_REPL_SVC_ALLOW_ANY_SERVICE'] %>
+replicator.filter.bidiSlave.allowAnyRemoteService=<%= ENV['TUNGSTEN_REPL_SVC_ALLOW_ANY_SERVICE'] %>

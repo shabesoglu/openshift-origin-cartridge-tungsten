@@ -1,0 +1,14 @@
+###########################################################################
+#  Continuent Tungsten Environment variable definition for OpenShift
+#
+#  TUNGSTEN_APPLIER_REPL_DBTHLURL.erb
+#
+#
+#  This environment variable is used to set the following Tungsten properties:
+#
+#  replicator.filter.pkey.url
+#  replicator.service.channel-assignment.url
+#  replicator.store.thl.url
+#
+###########################################################################
+jdbc:mysql:thin://${replicator.global.db.host}:${replicator.global.db.port}/${replicator.schema}?createDB

@@ -1,0 +1,13 @@
+###########################################################################
+#  Continuent Tungsten Environment variable definition for OpenShift
+#
+#  TUNGSTEN_SERVICE_REPL_BACKUP_STORAGE_DIR.erb
+#
+#
+#  This environment variable is used to set the following Tungsten properties:
+#
+#  replicator.backup.agent.mysqldump.options
+#  replicator.storage.agent.fs.directory
+#
+###########################################################################
+<%= ['OPENSHIFT_DATA_DIR'] %>/backups

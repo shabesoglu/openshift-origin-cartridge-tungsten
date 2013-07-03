@@ -1,0 +1,25 @@
+#####################################
+# CHECKER.MYSQLSERVER.PROPERTIES    #
+#####################################
+
+name=mysql_response
+class=com.continuent.tungsten.monitor.checkers.JDBCMySQLDatabaseServerChecker
+
+# delay between each monitoring run - default 3000ms
+frequency=3000
+# connection will be renewed after this period
+reconnectAfter=30000
+serverName=<%= ENV['TUNGSTEN_HOST_HOST'] %>
+host=<%= ENV['TUNGSTEN_APPLIER_REPL_DBHOST'] %>
+vendor=mysql
+port=<%= ENV['TUNGSTEN_APPLIER_REPL_DBPORT'] %>
+driver=com.mysql.jdbc.Driver
+url=jdbc:mysql://<%= ENV['TUNGSTEN_APPLIER_REPL_DBHOST'] %>:<%= ENV['TUNGSTEN_APPLIER_REPL_DBPORT'] %>/tungsten
+username=<%= ENV['TUNGSTEN_APPLIER_REPL_DBLOGIN'] %>
+password=<%= ENV['TUNGSTEN_APPLIER_REPL_DBPASSWORD'] %>
+query=select 1
+queryTimeout=5
+queryFileName=mysql_checker_query.sql
+
+
+
