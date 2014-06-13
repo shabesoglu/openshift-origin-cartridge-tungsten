@@ -9,6 +9,7 @@ Cartridge-Version: 0.0.1
 Cartridge-Vendor: continuent
 License: Commercial
 Vendor: continuent
+Source-Url: https://github.com/shabesoglu/openshift-origin-cartridge-tungsten.git
 Categories:
   - service
   - database
